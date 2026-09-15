@@ -4,9 +4,13 @@ import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Server {
     ServerSocket socket;
+
+    Map<String, Handler> routes = new HashMap<>();
 
     public Server() throws IOException {
         this.socket = new ServerSocket(8080);
@@ -36,16 +40,24 @@ public class Server {
             String path = parts[1];
 
             var out = client.getOutputStream();
-            if (path.equals("/hello")) {
-                out.write(response(200, "OK", "Hello").getBytes(StandardCharsets.UTF_8));
-            } else {
+
+            Handler handler = routes.get(path);
+
+            if (handler == null) {
                 out.write(response(404, "Not Found", "not found").getBytes(StandardCharsets.UTF_8));
+            } else {
+                out.write(response(200, "OK", handler.handle()).getBytes(StandardCharsets.UTF_8));
             }
+
             client.close();
         }
     }
 
     String response(int status, String text, String body) {
         return "HTTP/1.1 " + status + " " + text + "\r\n" + "Content-Length: " + body.getBytes(StandardCharsets.UTF_8).length + "\r\n\r\n" + body;
+    }
+
+    void route(String path, Handler handler) {
+        this.routes.put(path, handler);
     }
 }

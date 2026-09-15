@@ -2,7 +2,9 @@ import java.io.IOException;
 
 public class Main {
     public static void main(String[] args) throws IOException {
-        new Server().start();
-        System.out.println("OK");
+        Server server = new Server();
+        server.route("/hello", () -> "Hello");
+        System.out.println("Server started on http://localhost:8080");
+        server.start();
     }
 }

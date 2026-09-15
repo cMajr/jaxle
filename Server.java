@@ -15,12 +15,26 @@ public class Server {
     public void start() throws IOException {
         while (true) {
             Socket client = socket.accept();
-            System.out.println("OK");
+
             var in = new BufferedReader(new InputStreamReader(client.getInputStream()));
             String requestLine = in.readLine();
+
+            // client closed the connection without sending any data
+            if (requestLine == null) {
+                client.close();
+                continue;
+            }
+
             String[] parts = requestLine.split(" ");
-            System.out.println("method=" + parts[0] + " path=" + parts[1]);
+
+            if (parts.length != 3) {
+                client.getOutputStream().write(response(400, "Bad Request", "Bad Request").getBytes(StandardCharsets.UTF_8));
+                client.close();
+                continue;
+            }
+
             String path = parts[1];
+
             var out = client.getOutputStream();
             if (path.equals("/hello")) {
                 out.write(response(200, "OK", "Hello").getBytes(StandardCharsets.UTF_8));

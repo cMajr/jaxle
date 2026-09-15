@@ -20,8 +20,18 @@ public class Server {
             String requestLine = in.readLine();
             String[] parts = requestLine.split(" ");
             System.out.println("method=" + parts[0] + " path=" + parts[1]);
-            client.getOutputStream().write("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello".getBytes(StandardCharsets.UTF_8));
+            String path = parts[1];
+            var out = client.getOutputStream();
+            if (path.equals("/hello")) {
+                out.write(response(200, "OK", "Hello").getBytes(StandardCharsets.UTF_8));
+            } else {
+                out.write(response(404, "Not Found", "not found").getBytes(StandardCharsets.UTF_8));
+            }
             client.close();
         }
+    }
+
+    String response(int status, String text, String body) {
+        return "HTTP/1.1 " + status + " " + text + "\r\n" + "Content-Length: " + body.getBytes(StandardCharsets.UTF_8).length + "\r\n\r\n" + body;
     }
 }

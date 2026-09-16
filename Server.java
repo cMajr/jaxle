@@ -70,7 +70,8 @@ public class Server {
 
                             out.write(response(405, "Method Not Allowed", "Method Not Allowed", Map.of("Allow", allowedMethods)).getBytes(StandardCharsets.UTF_8));
                         } else {
-                            out.write(response(200, "OK", handler.handle()).getBytes(StandardCharsets.UTF_8));
+                            Request request = new Request(method, path);
+                            out.write(response(200, "OK", handler.handle(request)).getBytes(StandardCharsets.UTF_8));
                         }
                     }
                 } catch (Exception e) {

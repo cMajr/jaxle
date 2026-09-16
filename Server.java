@@ -10,7 +10,8 @@ import java.util.Map;
 public class Server {
     ServerSocket socket;
 
-    Map<String, Handler> routes = new HashMap<>();
+    // Path is resolved first to distinguish 404 from 405.
+    Map<String, Map<String, Handler>> routes = new HashMap<>();
 
     public Server() throws IOException {
         this.socket = new ServerSocket(8080);
@@ -23,7 +24,7 @@ public class Server {
             var in = new BufferedReader(new InputStreamReader(client.getInputStream()));
             String requestLine = in.readLine();
 
-            // client closed the connection without sending any data
+            // Client closed the connection without sending any data.
             if (requestLine == null) {
                 client.close();
                 continue;
@@ -37,16 +38,22 @@ public class Server {
                 continue;
             }
 
+            String method = parts[0];
             String path = parts[1];
 
             var out = client.getOutputStream();
 
-            Handler handler = routes.get(path);
+            Map<String, Handler> inner = routes.get(path);
 
-            if (handler == null) {
-                out.write(response(404, "Not Found", "not found").getBytes(StandardCharsets.UTF_8));
+            if (inner == null) {
+                out.write(response(404, "Not Found", "Not Found").getBytes(StandardCharsets.UTF_8));
             } else {
-                out.write(response(200, "OK", handler.handle()).getBytes(StandardCharsets.UTF_8));
+                Handler handler = inner.get(method);
+                if (handler == null) {
+                    out.write(response(405, "Method Not Allowed", "Method Not Allowed").getBytes(StandardCharsets.UTF_8));
+                } else {
+                    out.write(response(200, "OK", handler.handle()).getBytes(StandardCharsets.UTF_8));
+                }
             }
 
             client.close();
@@ -57,7 +64,16 @@ public class Server {
         return "HTTP/1.1 " + status + " " + text + "\r\n" + "Content-Length: " + body.getBytes(StandardCharsets.UTF_8).length + "\r\n\r\n" + body;
     }
 
-    void route(String path, Handler handler) {
-        this.routes.put(path, handler);
+    void addRoute(String method, String path, Handler handler) {
+        Map<String, Handler> inner = this.routes.get(path);
+
+        if (inner == null) {
+            inner = new HashMap<>();
+            // First method for this path.
+            this.routes.put(path, inner);
+        }
+
+        // Map from routes is modified in place.
+        inner.put(method, handler);
     }
 }

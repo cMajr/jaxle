@@ -6,8 +6,9 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
+
 import static java.lang.System.Logger.Level.ERROR;
-import static java.lang.System.Logger.Level.valueOf;
 
 public class Server {
     private static final System.Logger log = System.getLogger("jaxle.Server");
@@ -61,7 +62,13 @@ public class Server {
                     } else {
                         Handler handler = inner.get(method);
                         if (handler == null) {
-                            out.write(response(405, "Method Not Allowed", "Method Not Allowed").getBytes(StandardCharsets.UTF_8));
+                            var allowedMethods = inner
+                                .keySet()
+                                .stream()
+                                .map(Method::name)
+                                .collect(Collectors.joining(", "));
+
+                            out.write(response(405, "Method Not Allowed", "Method Not Allowed", Map.of("Allow", allowedMethods)).getBytes(StandardCharsets.UTF_8));
                         } else {
                             out.write(response(200, "OK", handler.handle()).getBytes(StandardCharsets.UTF_8));
                         }
@@ -80,7 +87,29 @@ public class Server {
     }
 
     String response(int status, String text, String body) {
-        return "HTTP/1.1 " + status + " " + text + "\r\n" + "Content-Length: " + body.getBytes(StandardCharsets.UTF_8).length + "\r\n\r\n" + body;
+        return response(status, text, body, Map.of());
+    }
+
+    String response(int status, String text, String body, Map<String, String> headers) {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder
+            .append("HTTP/1.1 ")
+            .append(status)
+            .append(" ")
+            .append(text)
+            .append("\r\n")
+            .append("Content-Length: ")
+            .append(body.getBytes(StandardCharsets.UTF_8).length)
+            .append("\r\n");
+
+        for (Map.Entry<String, String> header : headers.entrySet()) {
+            stringBuilder.append(header.getKey()).append(": ").append(header.getValue()).append("\r\n");
+        }
+
+        stringBuilder.append("\r\n");
+        stringBuilder.append(body);
+
+        return stringBuilder.toString();
     }
 
     void addRoute(Method method, String path, Handler handler) {

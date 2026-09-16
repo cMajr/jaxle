@@ -39,6 +39,7 @@ public class Server {
                     }
 
                     var headers = readHeaders(in);
+                    byte[] body = readBody(in, headers);
 
                     String[] parts = requestLine.split(" ");
 
@@ -74,13 +75,17 @@ public class Server {
 
                             out.write(response(405, "Method Not Allowed", "Method Not Allowed", Map.of("Allow", allowedMethods)).getBytes(StandardCharsets.UTF_8));
                         } else {
-                            Request request = new Request(method, path, headers);
+                            Request request = new Request(method, path, headers, body);
                             out.write(response(200, "OK", handler.handle(request)).getBytes(StandardCharsets.UTF_8));
                         }
                     }
                 } catch (BadRequestException e) {
                     log.log(DEBUG, e.getMessage());
-                    client.getOutputStream().write(response(400, "Bad Request", "Bad Request").getBytes(StandardCharsets.UTF_8));
+                    try {
+                        client.getOutputStream().write(response(400, "Bad Request", "Bad Request").getBytes(StandardCharsets.UTF_8));
+                    } catch (Exception suppressed) {
+                        // Connection is already broken.
+                    }
                 } catch (Exception e) {
                     log.log(ERROR, "Request failed", e);
                     try {
@@ -166,5 +171,32 @@ public class Server {
         }
 
         return headers;
+    }
+
+    byte[] readBody(InputStream in, Map<String, String> headers) throws IOException {
+        String contentLength = headers.get("content-length");
+        if (contentLength == null) {
+            return new byte[0];
+        }
+
+        int length;
+        try {
+            length = Integer.parseInt(contentLength);
+        } catch (NumberFormatException e) {
+            throw new BadRequestException("invalid content-length");
+        }
+
+        if (length < 0) {
+            throw new BadRequestException("invalid content-length");
+        }
+
+        byte[] payloadBytes = in.readNBytes(length);
+        int bytesRead = payloadBytes.length;
+
+        if (length != bytesRead) {
+            throw new BadRequestException("incomplete body");
+        }
+
+        return payloadBytes;
     }
 }

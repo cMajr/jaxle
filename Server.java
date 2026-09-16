@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import static java.lang.System.Logger.Level.ERROR;
+import static java.lang.System.Logger.Level.valueOf;
 
 public class Server {
     private static final System.Logger log = System.getLogger("jaxle.Server");
@@ -14,7 +15,7 @@ public class Server {
     ServerSocket socket;
 
     // Path is resolved first to distinguish 404 from 405.
-    Map<String, Map<String, Handler>> routes = new HashMap<>();
+    Map<String, Map<Method, Handler>> routes = new HashMap<>();
 
     public Server() throws IOException {
         this.socket = new ServerSocket(8080);
@@ -40,12 +41,20 @@ public class Server {
                         continue;
                     }
 
-                    String method = parts[0];
+                    Method method;
+
+                    try { 
+                        method = Method.valueOf(parts[0]);
+                    } catch (IllegalArgumentException e) {
+                        client.getOutputStream().write(response(501, "Not Implemented", "Not Implemented").getBytes(StandardCharsets.UTF_8));
+                        continue;
+                    }
+
                     String path = parts[1];
 
                     var out = client.getOutputStream();
 
-                    Map<String, Handler> inner = routes.get(path);
+                    Map<Method, Handler> inner = routes.get(path);
 
                     if (inner == null) {
                         out.write(response(404, "Not Found", "Not Found").getBytes(StandardCharsets.UTF_8));
@@ -74,8 +83,8 @@ public class Server {
         return "HTTP/1.1 " + status + " " + text + "\r\n" + "Content-Length: " + body.getBytes(StandardCharsets.UTF_8).length + "\r\n\r\n" + body;
     }
 
-    void addRoute(String method, String path, Handler handler) {
-        Map<String, Handler> inner = this.routes.get(path);
+    void addRoute(Method method, String path, Handler handler) {
+        Map<Method, Handler> inner = this.routes.get(path);
 
         if (inner == null) {
             inner = new HashMap<>();

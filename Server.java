@@ -24,42 +24,48 @@ public class Server {
         while (true) {
             Socket client = socket.accept();
             try (client) {
+                try {
+                    var in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+                    String requestLine = in.readLine();
 
-                var in = new BufferedReader(new InputStreamReader(client.getInputStream()));
-                String requestLine = in.readLine();
+                    // Client closed the connection without sending any data.
+                    if (requestLine == null) {
+                        continue;
+                    }
 
-                // Client closed the connection without sending any data.
-                if (requestLine == null) {
-                    continue;
-                }
+                    String[] parts = requestLine.split(" ");
 
-                String[] parts = requestLine.split(" ");
+                    if (parts.length != 3) {
+                        client.getOutputStream().write(response(400, "Bad Request", "Bad Request").getBytes(StandardCharsets.UTF_8));
+                        continue;
+                    }
 
-                if (parts.length != 3) {
-                    client.getOutputStream().write(response(400, "Bad Request", "Bad Request").getBytes(StandardCharsets.UTF_8));
-                    continue;
-                }
+                    String method = parts[0];
+                    String path = parts[1];
 
-                String method = parts[0];
-                String path = parts[1];
+                    var out = client.getOutputStream();
 
-                var out = client.getOutputStream();
+                    Map<String, Handler> inner = routes.get(path);
 
-                Map<String, Handler> inner = routes.get(path);
-
-                if (inner == null) {
-                    out.write(response(404, "Not Found", "Not Found").getBytes(StandardCharsets.UTF_8));
-                } else {
-                    Handler handler = inner.get(method);
-                    if (handler == null) {
-                        out.write(response(405, "Method Not Allowed", "Method Not Allowed").getBytes(StandardCharsets.UTF_8));
+                    if (inner == null) {
+                        out.write(response(404, "Not Found", "Not Found").getBytes(StandardCharsets.UTF_8));
                     } else {
-                        out.write(response(200, "OK", handler.handle()).getBytes(StandardCharsets.UTF_8));
+                        Handler handler = inner.get(method);
+                        if (handler == null) {
+                            out.write(response(405, "Method Not Allowed", "Method Not Allowed").getBytes(StandardCharsets.UTF_8));
+                        } else {
+                            out.write(response(200, "OK", handler.handle()).getBytes(StandardCharsets.UTF_8));
+                        }
+                    }
+                } catch (Exception e) {
+                    log.log(ERROR, "Request failed", e);
+                    try {
+                        var out = client.getOutputStream();
+                        out.write(response(500, "Internal Server Error", "Internal Server Error").getBytes(StandardCharsets.UTF_8));
+                    } catch (Exception suppressed) {
+                        // Connection is already broken, the real cause is logged above.
                     }
                 }
-
-            } catch(Exception e) {
-                log.log(ERROR, "Request failed", e);
             }
         }
     }

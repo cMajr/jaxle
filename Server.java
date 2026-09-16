@@ -1,10 +1,12 @@
-import java.io.BufferedReader;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -27,19 +29,20 @@ public class Server {
             Socket client = socket.accept();
             try (client) {
                 try {
-                    var in = new BufferedReader(new InputStreamReader(client.getInputStream()));
-                    String requestLine = in.readLine();
+                    var in = new BufferedInputStream(client.getInputStream());
+                    String requestLine = readLine(in);
 
                     // Client closed the connection without sending any data.
                     if (requestLine == null) {
                         continue;
                     }
 
+                    var headers = readHeaders(in);
+
                     String[] parts = requestLine.split(" ");
 
                     if (parts.length != 3) {
-                        client.getOutputStream().write(response(400, "Bad Request", "Bad Request").getBytes(StandardCharsets.UTF_8));
-                        continue;
+                        throw new BadRequestException("malformed request line");
                     }
 
                     Method method;
@@ -70,10 +73,12 @@ public class Server {
 
                             out.write(response(405, "Method Not Allowed", "Method Not Allowed", Map.of("Allow", allowedMethods)).getBytes(StandardCharsets.UTF_8));
                         } else {
-                            Request request = new Request(method, path);
+                            Request request = new Request(method, path, headers);
                             out.write(response(200, "OK", handler.handle(request)).getBytes(StandardCharsets.UTF_8));
                         }
                     }
+                } catch (BadRequestException e) {
+                    client.getOutputStream().write(response(400, "Bad Request", "Bad Request").getBytes(StandardCharsets.UTF_8));
                 } catch (Exception e) {
                     log.log(ERROR, "Request failed", e);
                     try {
@@ -124,5 +129,40 @@ public class Server {
 
         // Map from routes is modified in place.
         inner.put(method, handler);
+    }
+
+    String readLine(InputStream in) throws IOException {
+        var buf = new ByteArrayOutputStream();
+        while (true) {
+            int b = in.read();
+            if (b == '\n') break;
+            if (b == '\r') continue;
+            if (b == -1) {
+                if (buf.size() == 0) {
+                    return null;
+                } else {
+                    break;
+                }
+            }
+            buf.write(b);
+        }
+
+        return buf.toString(StandardCharsets.ISO_8859_1);
+    }
+
+    Map<String, String> readHeaders(InputStream in) throws IOException {
+        Map<String, String> headers = new HashMap<>();
+
+        while (true) {
+            String headerLine = readLine(in);
+            if (headerLine == null || headerLine.isEmpty()) break;
+            String[] headerParts = headerLine.split(":", 2);
+            if (headerParts.length != 2) {
+                throw new BadRequestException("Bad Request");
+            }
+            headers.put(headerParts[0].toLowerCase(Locale.ROOT), headerParts[1].strip());
+        }
+
+        return headers;
     }
 }

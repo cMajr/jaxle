@@ -10,6 +10,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 
 public class Server {
@@ -78,6 +79,7 @@ public class Server {
                         }
                     }
                 } catch (BadRequestException e) {
+                    log.log(DEBUG, e.getMessage());
                     client.getOutputStream().write(response(400, "Bad Request", "Bad Request").getBytes(StandardCharsets.UTF_8));
                 } catch (Exception e) {
                     log.log(ERROR, "Request failed", e);
@@ -158,7 +160,7 @@ public class Server {
             if (headerLine == null || headerLine.isEmpty()) break;
             String[] headerParts = headerLine.split(":", 2);
             if (headerParts.length != 2) {
-                throw new BadRequestException("Bad Request");
+                throw new BadRequestException("malformed header line");
             }
             headers.put(headerParts[0].toLowerCase(Locale.ROOT), headerParts[1].strip());
         }

@@ -1,3 +1,5 @@
+package jaxle;
+
 public enum Method {
     GET,
     HEAD,

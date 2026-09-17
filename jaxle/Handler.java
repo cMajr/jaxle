@@ -1,3 +1,5 @@
+package jaxle;
+
 public interface Handler {
     /**
      * Handles a request that matched the route of this handler.

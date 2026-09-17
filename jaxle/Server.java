@@ -1,3 +1,5 @@
+package jaxle;
+
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -19,11 +21,11 @@ import static java.lang.System.Logger.Level.ERROR;
 public class Server {
     private static final System.Logger log = System.getLogger("jaxle.Server");
 
-    ServerSocket socket;
+    private final ServerSocket socket;
 
     // Path is resolved first to distinguish 404 from 405.
     // When several patterns match, the first registered one wins.
-    Map<String, Map<Method, Handler>> routes = new LinkedHashMap<>();
+    private final Map<String, Map<Method, Handler>> routes = new LinkedHashMap<>();
 
     private record RouteMatch(Map<Method, Handler> handlers, Map<String, String> params) {}
 
@@ -181,7 +183,24 @@ public class Server {
         };
     }
 
-    void addRoute(Method method, String path, Handler handler) {
+    /**
+     * Registers a handler for requests with the given method and path.
+     *
+     * <p>A segment of the path written in braces is a path parameter, as in
+     * {@code /users/{id}}. Its value reaches the handler through
+     * {@link Request#param(String)}. A request whose path matches nothing
+     * is answered with 404, a request whose path matches a route with no
+     * handler for its method with 405.
+     *
+     * <p>Registering the same method and path again replaces the previous
+     * handler. An exact path always wins over a pattern, and among patterns
+     * the one registered first wins.
+     *
+     * @param method the request method this handler answers
+     * @param path the path to match, with optional path parameters in braces
+     * @param handler the handler called for a matching request
+     */
+    public void addRoute(Method method, String path, Handler handler) {
         Map<Method, Handler> inner = this.routes.get(path);
 
         if (inner == null) {

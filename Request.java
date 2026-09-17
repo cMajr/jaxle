@@ -1,11 +1,19 @@
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
-public record Request(Method method, String path, Map<String, String> headers, byte[] body, Map<String, String> params) {
+public record Request(
+    Method method,
+    String path,
+    Map<String, String> headers,
+    byte[] body,
+    Map<String, String> params,
+    Map<String, String> queryParams
+) {
     public Request {
         headers = Map.copyOf(headers);
         body = body.clone();
         params = Map.copyOf(params);
+        queryParams = Map.copyOf(queryParams);
     }
 
     /**
@@ -45,5 +53,19 @@ public record Request(Method method, String path, Map<String, String> headers, b
         }
 
         return value;
+    }
+
+    /**
+     * {@return the value of the named query parameter}
+     *
+     * <p>A parameter missing from the query gives {@code null}, while a
+     * parameter given without a value gives an empty string. A name that
+     * repeats in the query keeps its first value. Names and values are
+     * percent-decoded as UTF-8.
+     *
+     * @param name the parameter name, as it appears in the query
+     */
+    public String query(String name) {
+        return queryParams.get(name);
     }
 }

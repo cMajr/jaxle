@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -63,6 +64,7 @@ public class Server {
                     var headers = readHeaders(in);
                     byte[] body = readBody(in, headers);
 
+                    // For example "GET /users/42?page=2 HTTP/1.1" gives method, target and version.
                     String[] parts = requestLine.split(" ");
 
                     if (parts.length != 3) {
@@ -78,16 +80,15 @@ public class Server {
                         continue;
                     }
 
-                    // TODO: query parameters are discarded here and not yet available to handlers.
                     String path = stripQuery(parts[1]);
-                    RouteMatch match = findRoute(path);
+                    RouteMatch route = findRoute(path);
 
-                    if (match == null) {
+                    if (route == null) {
                         writeResponse(out, Response.text(404, "Not Found"));
                     } else {
-                        Handler handler = match.handlers().get(method);
+                        Handler handler = route.handlers().get(method);
                         if (handler == null) {
-                            var allowedMethods = match.handlers()
+                            var allowedMethods = route.handlers()
                                 .keySet()
                                 .stream()
                                 .map(Method::name)
@@ -95,7 +96,8 @@ public class Server {
 
                             writeResponse(out, Response.text(405, "Method Not Allowed").withHeader("Allow", allowedMethods));
                         } else {
-                            Request request = new Request(method, path, headers, body, match.params());
+                            Map<String, String> queryParams = parseQuery(rawQuery(parts[1]));
+                            Request request = new Request(method, path, headers, body, route.params(), queryParams);
                             writeResponse(out, handler.handle(request));
                         }
                     }
@@ -199,6 +201,43 @@ public class Server {
         }
 
         return target.substring(0, queryStart);
+    }
+
+    private static String rawQuery(String target) {
+        int queryStart = target.indexOf('?');
+        if (queryStart < 0) {
+            return "";
+        }
+
+        return target.substring(queryStart + 1);
+    }
+
+    private static Map<String, String> parseQuery(String query) {
+        Map<String, String> queryParams = new HashMap<>();
+        String[] pairs = query.split("&");
+
+        for (String pair : pairs) {
+            if (pair.isEmpty()) {
+                continue;
+            }
+
+            String[] pairParts = pair.split("=", 2);
+            String name = decode(pairParts[0]);
+            String value = pairParts.length >= 2 ? decode(pairParts[1]) : "";
+
+            // A repeated name keeps its first value.
+            queryParams.putIfAbsent(name, value);
+        }
+
+        return queryParams;
+    }
+
+    private static String decode(String value) {
+        try {
+            return URLDecoder.decode(value, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("invalid percent-encoding");
+        }
     }
 
     RouteMatch findRoute(String path) {

@@ -2,6 +2,7 @@ import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -31,6 +32,7 @@ public class Server {
             try (client) {
                 try {
                     var in = new BufferedInputStream(client.getInputStream());
+                    var out = client.getOutputStream();
                     String requestLine = readLine(in);
 
                     // Client closed the connection without sending any data.
@@ -52,18 +54,16 @@ public class Server {
                     try { 
                         method = Method.valueOf(parts[0]);
                     } catch (IllegalArgumentException e) {
-                        client.getOutputStream().write(response(501, "Not Implemented", "Not Implemented").getBytes(StandardCharsets.UTF_8));
+                        writeResponse(out, Response.text(501, "Not Implemented"));
                         continue;
                     }
 
                     String path = parts[1];
 
-                    var out = client.getOutputStream();
-
                     Map<Method, Handler> inner = routes.get(path);
 
                     if (inner == null) {
-                        out.write(response(404, "Not Found", "Not Found").getBytes(StandardCharsets.UTF_8));
+                        writeResponse(out, Response.text(404, "Not Found"));
                     } else {
                         Handler handler = inner.get(method);
                         if (handler == null) {
@@ -73,16 +73,17 @@ public class Server {
                                 .map(Method::name)
                                 .collect(Collectors.joining(", "));
 
-                            out.write(response(405, "Method Not Allowed", "Method Not Allowed", Map.of("Allow", allowedMethods)).getBytes(StandardCharsets.UTF_8));
+                            writeResponse(out, Response.text(405, "Method Not Allowed").withHeader("Allow", allowedMethods));
                         } else {
                             Request request = new Request(method, path, headers, body);
-                            out.write(response(200, "OK", handler.handle(request)).getBytes(StandardCharsets.UTF_8));
+                            writeResponse(out, handler.handle(request));
                         }
                     }
                 } catch (BadRequestException e) {
                     log.log(DEBUG, e.getMessage());
                     try {
-                        client.getOutputStream().write(response(400, "Bad Request", "Bad Request").getBytes(StandardCharsets.UTF_8));
+                        var out = client.getOutputStream();
+                        writeResponse(out, Response.text(400, "Bad Request"));
                     } catch (Exception suppressed) {
                         // Connection is already broken.
                     }
@@ -90,7 +91,7 @@ public class Server {
                     log.log(ERROR, "Request failed", e);
                     try {
                         var out = client.getOutputStream();
-                        out.write(response(500, "Internal Server Error", "Internal Server Error").getBytes(StandardCharsets.UTF_8));
+                        writeResponse(out, Response.text(500, "Internal Server Error"));
                     } catch (Exception suppressed) {
                         // Connection is already broken, the real cause is logged above.
                     }
@@ -99,30 +100,54 @@ public class Server {
         }
     }
 
-    String response(int status, String text, String body) {
-        return response(status, text, body, Map.of());
-    }
-
-    String response(int status, String text, String body, Map<String, String> headers) {
+    void writeResponse(OutputStream out, Response response) throws IOException {
         StringBuilder stringBuilder = new StringBuilder();
+        int status = response.status();
         stringBuilder
             .append("HTTP/1.1 ")
             .append(status)
             .append(" ")
-            .append(text)
-            .append("\r\n")
-            .append("Content-Length: ")
-            .append(body.getBytes(StandardCharsets.UTF_8).length)
+            .append(reasonPhrase(status))
             .append("\r\n");
 
-        for (Map.Entry<String, String> header : headers.entrySet()) {
+        for (Map.Entry<String, String> header : response.headers().entrySet()) {
             stringBuilder.append(header.getKey()).append(": ").append(header.getValue()).append("\r\n");
         }
 
+        byte[] body = response.body();
+        // TODO: ignore or reject a user-supplied content-length,
+        // otherwise the response carries two conflicting values.
+        stringBuilder.append("content-length: ").append(body.length).append("\r\n");
         stringBuilder.append("\r\n");
-        stringBuilder.append(body);
+        String head = stringBuilder.toString();
 
-        return stringBuilder.toString();
+        out.write(head.getBytes(StandardCharsets.ISO_8859_1));
+        out.write(body);
+    }
+
+    private static String reasonPhrase(int status) {
+        return switch (status) {
+            case 200 -> "OK";
+            case 201 -> "Created";
+            case 204 -> "No Content";
+            case 301 -> "Moved Permanently";
+            case 302 -> "Found";
+            case 304 -> "Not Modified";
+            case 400 -> "Bad Request";
+            case 401 -> "Unauthorized";
+            case 403 -> "Forbidden";
+            case 404 -> "Not Found";
+            case 405 -> "Method Not Allowed";
+            case 409 -> "Conflict";
+            case 413 -> "Content Too Large";
+            case 415 -> "Unsupported Media Type";
+            case 422 -> "Unprocessable Content";
+            case 429 -> "Too Many Requests";
+            case 500 -> "Internal Server Error";
+            case 501 -> "Not Implemented";
+            case 503 -> "Service Unavailable";
+            default -> "";
+        };
     }
 
     void addRoute(Method method, String path, Handler handler) {

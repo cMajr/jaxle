@@ -1,3 +1,3 @@
 public interface Handler {
-    String handle(Request request);
+    Response handle(Request request);
 }

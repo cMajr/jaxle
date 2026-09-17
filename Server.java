@@ -51,7 +51,7 @@ public class Server {
 
                     Method method;
 
-                    try { 
+                    try {
                         method = Method.valueOf(parts[0]);
                     } catch (IllegalArgumentException e) {
                         writeResponse(out, Response.text(501, "Not Implemented"));

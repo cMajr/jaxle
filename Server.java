@@ -26,10 +26,26 @@ public class Server {
 
     private record RouteMatch(Map<Method, Handler> handlers, Map<String, String> params) {}
 
+    /**
+     * Creates a server bound to port 8080.
+     *
+     * <p>The port is bound right away. If it is already in use, this
+     * constructor fails before any route is registered.
+     *
+     * @throws IOException if the port cannot be bound
+     */
     public Server() throws IOException {
         this.socket = new ServerSocket(8080);
     }
 
+    /**
+     * Accepts and handles connections until the process ends.
+     *
+     * <p>This method blocks the calling thread and never returns normally.
+     * Connections are served one at a time, with a single request per connection.
+     *
+     * @throws IOException if the listening socket fails
+     */
     public void start() throws IOException {
         while (true) {
             Socket client = socket.accept();

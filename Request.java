@@ -8,6 +8,12 @@ public record Request(Method method, String path, Map<String, String> headers, b
         params = Map.copyOf(params);
     }
 
+    /**
+     * {@return a copy of the raw body bytes}
+     *
+     * <p>Each call returns a new array that can be changed without affecting
+     * this request. A request without a body gives an empty array.
+     */
     public byte[] body() {
         return body.clone();
     }
@@ -24,6 +30,14 @@ public record Request(Method method, String path, Map<String, String> headers, b
         return new String(body, StandardCharsets.UTF_8);
     }
 
+    /**
+     * {@return the value of the named path parameter}
+     *
+     * <p>The value is taken from the path as is and is not percent-decoded.
+     *
+     * @param name the name inside the braces of the route pattern
+     * @throws IllegalArgumentException if the route has no such parameter
+     */
     public String param(String name) {
         String value = params.get(name);
         if (value == null) {

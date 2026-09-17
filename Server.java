@@ -78,9 +78,8 @@ public class Server {
                         continue;
                     }
 
-                    // TODO: strip the query string, "/users/42?x=1" currently yields id "42?x=1".
-                    String path = parts[1];
-
+                    // TODO: query parameters are discarded here and not yet available to handlers.
+                    String path = stripQuery(parts[1]);
                     RouteMatch match = findRoute(path);
 
                     if (match == null) {
@@ -191,6 +190,15 @@ public class Server {
 
         // Map from routes is modified in place.
         inner.put(method, handler);
+    }
+
+    private static String stripQuery(String target) {
+        int queryStart = target.indexOf('?');
+        if (queryStart < 0) {
+            return target;
+        }
+
+        return target.substring(0, queryStart);
     }
 
     RouteMatch findRoute(String path) {

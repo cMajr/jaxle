@@ -106,8 +106,10 @@ public class Server {
     }
 
     void writeResponse(OutputStream out, Response response) throws IOException {
-        StringBuilder stringBuilder = new StringBuilder();
         int status = response.status();
+        boolean hasBody = status != 204 && status != 304;
+
+        StringBuilder stringBuilder = new StringBuilder();
         stringBuilder
             .append("HTTP/1.1 ")
             .append(status)
@@ -120,14 +122,21 @@ public class Server {
         }
 
         byte[] body = response.body();
+
         // TODO: ignore or reject a user-supplied content-length,
         // otherwise the response carries two conflicting values.
-        stringBuilder.append("content-length: ").append(body.length).append("\r\n");
+        if (hasBody) {
+            stringBuilder.append("content-length: ").append(body.length).append("\r\n");
+        }
+
         stringBuilder.append("\r\n");
         String head = stringBuilder.toString();
 
         out.write(head.getBytes(StandardCharsets.ISO_8859_1));
-        out.write(body);
+
+        if (hasBody) {
+            out.write(body);
+        }
     }
 
     private static String reasonPhrase(int status) {

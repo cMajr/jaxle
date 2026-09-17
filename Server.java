@@ -7,6 +7,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -20,7 +21,10 @@ public class Server {
     ServerSocket socket;
 
     // Path is resolved first to distinguish 404 from 405.
-    Map<String, Map<Method, Handler>> routes = new HashMap<>();
+    // When several patterns match, the first registered one wins.
+    Map<String, Map<Method, Handler>> routes = new LinkedHashMap<>();
+
+    private record RouteMatch(Map<Method, Handler> handlers, Map<String, String> params) {}
 
     public Server() throws IOException {
         this.socket = new ServerSocket(8080);
@@ -58,16 +62,17 @@ public class Server {
                         continue;
                     }
 
+                    // TODO: strip the query string, "/users/42?x=1" currently yields id "42?x=1".
                     String path = parts[1];
 
-                    Map<Method, Handler> inner = routes.get(path);
+                    RouteMatch match = findRoute(path);
 
-                    if (inner == null) {
+                    if (match == null) {
                         writeResponse(out, Response.text(404, "Not Found"));
                     } else {
-                        Handler handler = inner.get(method);
+                        Handler handler = match.handlers().get(method);
                         if (handler == null) {
-                            var allowedMethods = inner
+                            var allowedMethods = match.handlers()
                                 .keySet()
                                 .stream()
                                 .map(Method::name)
@@ -75,7 +80,7 @@ public class Server {
 
                             writeResponse(out, Response.text(405, "Method Not Allowed").withHeader("Allow", allowedMethods));
                         } else {
-                            Request request = new Request(method, path, headers, body);
+                            Request request = new Request(method, path, headers, body, match.params());
                             writeResponse(out, handler.handle(request));
                         }
                     }
@@ -161,6 +166,48 @@ public class Server {
 
         // Map from routes is modified in place.
         inner.put(method, handler);
+    }
+
+    RouteMatch findRoute(String path) {
+        var inner = routes.get(path);
+
+        if (inner != null) {
+            return new RouteMatch(inner, Map.of());
+        }
+
+        for (Map.Entry<String, Map<Method, Handler>> route : routes.entrySet()) {
+            var params = matchPath(route.getKey(), path);
+            if (params != null) {
+                return new RouteMatch(route.getValue(), params);
+            }
+        }
+
+        return null;
+    }
+
+    Map<String, String> matchPath(String pattern, String path) {
+        String[] patternParts = pattern.split("/");
+        String[] pathParts = path.split("/");
+
+        if (patternParts.length != pathParts.length) {
+            return null;
+        }
+
+        Map<String, String> params = new HashMap<>();
+
+        for (int i = 0; i < patternParts.length; i++) {
+            String patternPart = patternParts[i];
+            String pathPart = pathParts[i];
+
+            if (patternPart.startsWith("{") && patternPart.endsWith("}")) {
+                String name = patternPart.substring(1, patternPart.length() - 1);
+                params.put(name, pathPart);
+            } else if (!patternPart.equals(pathPart)) {
+                return null;
+            }
+        }
+
+        return params;
     }
 
     String readLine(InputStream in) throws IOException {

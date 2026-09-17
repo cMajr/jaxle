@@ -1,10 +1,11 @@
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
-public record Request(Method method, String path, Map<String, String> headers, byte[] body) {
+public record Request(Method method, String path, Map<String, String> headers, byte[] body, Map<String, String> params) {
     public Request {
         headers = Map.copyOf(headers);
         body = body.clone();
+        params = Map.copyOf(params);
     }
 
     public byte[] body() {
@@ -21,5 +22,14 @@ public record Request(Method method, String path, Map<String, String> headers, b
      */
     public String text() {
         return new String(body, StandardCharsets.UTF_8);
+    }
+
+    public String param(String name) {
+        String value = params.get(name);
+        if (value == null) {
+            throw new IllegalArgumentException("no path parameter named " + name);
+        }
+
+        return value;
     }
 }

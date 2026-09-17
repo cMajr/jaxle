@@ -33,6 +33,41 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
     }
 
     /**
+     * {@return a plain-text response with status 404}
+     *
+     * <p>Same as {@link #text(int, String) text(404, content)}.
+     *
+     * @param content the body text
+     */
+    public static Response notFound(String content) {
+        return text(404, content);
+    }
+
+    /**
+     * {@return a plain-text response with status 400}
+     *
+     * <p>Same as {@link #text(int, String) text(400, content)}.
+     *
+     * @param content the body text
+     */
+    public static Response badRequest(String content) {
+        return text(400, content);
+    }
+
+    /**
+     * {@return a plain-text response with status 201}
+     *
+     * <p>Same as {@link #text(int, String) text(201, content)} with the
+     * location added as the {@code location} header.
+     *
+     * @param location the path or URL of the created resource
+     * @param content the body text
+     */
+    public static Response created(String location, String content) {
+        return text(201, content).withHeader("location", location);
+    }
+
+    /**
      * {@return a plain-text response with the given status}
      *
      * <p>The body is encoded in UTF-8 and sent as

@@ -68,6 +68,16 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
     }
 
     /**
+     * {@return a response with status 204 and no body}
+     *
+     * <p>The response carries no headers of its own. Neither a body nor a
+     * {@code content-length} reaches the client, as required for this status.
+     */
+    public static Response noContent() {
+        return new Response(204, Map.of(), new byte[0]);
+    }
+
+    /**
      * {@return a plain-text response with the given status}
      *
      * <p>The body is encoded in UTF-8 and sent as

@@ -9,6 +9,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -212,7 +213,7 @@ public class Server {
         Map<Method, Handler> inner = this.routes.get(path);
 
         if (inner == null) {
-            inner = new HashMap<>();
+            inner = new EnumMap<>(Method.class);
             // First method for this path.
             this.routes.put(path, inner);
         }

@@ -70,7 +70,7 @@ public class Server {
                     String[] parts = requestLine.split(" ");
 
                     if (parts.length != 3) {
-                        throw new BadRequestException("malformed request line");
+                        throw new HttpException(400, "malformed request line");
                     }
 
                     Method method;
@@ -103,11 +103,19 @@ public class Server {
                             writeResponse(out, handler.handle(request));
                         }
                     }
-                } catch (BadRequestException e) {
-                    log.log(DEBUG, e.getMessage());
+                } catch (HttpException e) {
+                    String message;
+                    if (e.status() >= 500) {
+                        log.log(ERROR, "Request failed", e);
+                        message = reasonPhrase(e.status());
+                    } else {
+                        log.log(DEBUG, e.getMessage());
+                        message = e.getMessage();
+                    }
+
                     try {
                         var out = client.getOutputStream();
-                        writeResponse(out, Response.text(400, "Bad Request"));
+                        writeResponse(out, Response.text(e.status(), message));
                     } catch (Exception suppressed) {
                         // Connection is already broken.
                     }
@@ -255,7 +263,7 @@ public class Server {
         try {
             return URLDecoder.decode(value, StandardCharsets.UTF_8);
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("invalid percent-encoding");
+            throw new HttpException(400, "invalid percent-encoding");
         }
     }
 
@@ -328,7 +336,7 @@ public class Server {
             if (headerLine == null || headerLine.isEmpty()) break;
             String[] headerParts = headerLine.split(":", 2);
             if (headerParts.length != 2) {
-                throw new BadRequestException("malformed header line");
+                throw new HttpException(400, "malformed header line");
             }
             headers.put(headerParts[0].toLowerCase(Locale.ROOT), headerParts[1].strip());
         }
@@ -346,18 +354,18 @@ public class Server {
         try {
             length = Integer.parseInt(contentLength);
         } catch (NumberFormatException e) {
-            throw new BadRequestException("invalid content-length");
+            throw new HttpException(400, "invalid content-length");
         }
 
         if (length < 0) {
-            throw new BadRequestException("invalid content-length");
+            throw new HttpException(400, "invalid content-length");
         }
 
         byte[] payloadBytes = in.readNBytes(length);
         int bytesRead = payloadBytes.length;
 
         if (length != bytesRead) {
-            throw new BadRequestException("incomplete body");
+            throw new HttpException(400, "incomplete body");
         }
 
         return payloadBytes;

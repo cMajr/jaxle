@@ -2,6 +2,7 @@ package jaxle;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.function.Function;
 
 public record Request(
     Method method,
@@ -55,6 +56,27 @@ public record Request(
         }
 
         return value;
+    }
+
+    /**
+     * {@return the named path parameter converted by the given function}
+     *
+     * <p>The converter receives the value as it appears in the path. A
+     * converter that throws is taken as a rejection of the value, and the
+     * request is answered with 400.
+     *
+     * @param name the parameter name, as written in the route
+     * @param converter the function applied to the value
+     * @param <T> the type the converter produces
+     * @throws IllegalArgumentException if no path parameter has this name
+     */
+    public <T> T param(String name, Function<String, T> converter) {
+        String value = param(name);
+        try {
+            return converter.apply(value);
+        } catch (RuntimeException e) {
+            throw new HttpException(400, "bad path parameter " + name);
+        }
     }
 
     /**

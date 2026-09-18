@@ -33,13 +33,26 @@ public class Server {
     /**
      * Creates a server bound to port 8080.
      *
-     * <p>The port is bound right away. If it is already in use, this
-     * constructor fails before any route is registered.
+     * <p>Same as {@link #Server(int) Server(8080)}.
      *
      * @throws IOException if the port cannot be bound
      */
     public Server() throws IOException {
-        this.socket = new ServerSocket(8080);
+        this(8080);
+    }
+
+    /**
+     * Creates a server bound to the given port.
+     *
+     * <p>The port is bound right away. If it is already in use, this
+     * constructor fails before any route is registered.
+     *
+     * @param port the port to listen on
+     * @throws IOException if the port cannot be bound
+     * @throws IllegalArgumentException if the port is outside 0 to 65535
+     */
+    public Server(int port) throws IOException {
+        this.socket = new ServerSocket(port);
     }
 
     /**

@@ -205,7 +205,7 @@ public class Server {
      * the one registered first wins.
      *
      * @param method the request method this handler answers
-     * @param path the path to match, with optional path parameters in braces
+     * @param path the path to match
      * @param handler the handler called for a matching request
      */
     public void addRoute(Method method, String path, Handler handler) {
@@ -219,6 +219,71 @@ public class Server {
 
         // Map from routes is modified in place.
         inner.put(method, handler);
+    }
+
+    /**
+     * Registers a handler for GET requests to the given path.
+     *
+     * <p>Same as {@link #addRoute(Method, String, Handler)
+     * addRoute(Method.GET, path, handler)}.
+     *
+     * @param path the path to match
+     * @param handler the handler called for a matching request
+     */
+    public void get(String path, Handler handler) {
+        addRoute(Method.GET, path, handler);
+    }
+
+    /**
+     * Registers a handler for POST requests to the given path.
+     *
+     * <p>Same as {@link #addRoute(Method, String, Handler)
+     * addRoute(Method.POST, path, handler)}.
+     *
+     * @param path the path to match
+     * @param handler the handler called for a matching request
+     */
+    public void post(String path, Handler handler) {
+        addRoute(Method.POST, path, handler);
+    }
+
+    /**
+     * Registers a handler for PUT requests to the given path.
+     *
+     * <p>Same as {@link #addRoute(Method, String, Handler)
+     * addRoute(Method.PUT, path, handler)}.
+     *
+     * @param path the path to match
+     * @param handler the handler called for a matching request
+     */
+    public void put(String path, Handler handler) {
+        addRoute(Method.PUT, path, handler);
+    }
+
+    /**
+     * Registers a handler for PATCH requests to the given path.
+     *
+     * <p>Same as {@link #addRoute(Method, String, Handler)
+     * addRoute(Method.PATCH, path, handler)}.
+     *
+     * @param path the path to match
+     * @param handler the handler called for a matching request
+     */
+    public void patch(String path, Handler handler) {
+        addRoute(Method.PATCH, path, handler);
+    }
+
+    /**
+     * Registers a handler for DELETE requests to the given path.
+     *
+     * <p>Same as {@link #addRoute(Method, String, Handler)
+     * addRoute(Method.DELETE, path, handler)}.
+     *
+     * @param path the path to match
+     * @param handler the handler called for a matching request
+     */
+    public void delete(String path, Handler handler) {
+        addRoute(Method.DELETE, path, handler);
     }
 
     private static String stripQuery(String target) {

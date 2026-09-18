@@ -33,28 +33,6 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
     }
 
     /**
-     * {@return a plain-text response with status 404}
-     *
-     * <p>Same as {@link #text(int, String) text(404, content)}.
-     *
-     * @param content the body text
-     */
-    public static Response notFound(String content) {
-        return text(404, content);
-    }
-
-    /**
-     * {@return a plain-text response with status 400}
-     *
-     * <p>Same as {@link #text(int, String) text(400, content)}.
-     *
-     * @param content the body text
-     */
-    public static Response badRequest(String content) {
-        return text(400, content);
-    }
-
-    /**
      * {@return a plain-text response with status 201}
      *
      * <p>Same as {@link #text(int, String) text(201, content)} with the
@@ -75,6 +53,38 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
      */
     public static Response noContent() {
         return new Response(204, Map.of(), new byte[0]);
+    }
+
+    /**
+     * {@return a plain-text response with status 400}
+     *
+     * <p>Same as {@link #text(int, String) text(400, content)}.
+     *
+     * @param content the body text
+     */
+    public static Response badRequest(String content) {
+        return text(400, content);
+    }
+
+    /**
+     * {@return a plain-text response with status 404}
+     *
+     * <p>Same as {@link #text(int, String) text(404, content)}.
+     *
+     * @param content the body text
+     */
+    public static Response notFound(String content) {
+        return text(404, content);
+    }
+
+    public static Response conflict(String content) {
+        return text(409, content);
+    }
+
+    public static Response json(int status, String content) {
+        Map<String, String> headers = Map.of("content-type", "application/json");
+        byte[] body = content.getBytes(StandardCharsets.UTF_8);
+        return new Response(status, headers, body);
     }
 
     /**

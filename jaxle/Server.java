@@ -382,7 +382,7 @@ public class Server {
 
             if (patternPart.startsWith("{") && patternPart.endsWith("}")) {
                 String name = patternPart.substring(1, patternPart.length() - 1);
-                params.put(name, pathPart);
+                params.put(name, decode(pathPart.replace("+", "%2B")));
             } else if (!patternPart.equals(pathPart)) {
                 return null;
             }

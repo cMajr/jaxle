@@ -7,6 +7,8 @@ underneath. Routes are registered with `server.get`, `server.post` and
 similar methods, where a segment in braces such as `/users/{id}` becomes
 a path parameter.
 
+Jaxle requires Java 17 or later.
+
 ```java
 import java.io.IOException;
 

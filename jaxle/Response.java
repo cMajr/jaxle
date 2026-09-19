@@ -7,7 +7,18 @@ import java.util.Map;
 
 public record Response(int status, Map<String, String> headers, byte[] body) {
     public Response {
-        headers = Map.copyOf(headers);
+        Map<String, String> lowercased = new HashMap<>();
+
+        for (Map.Entry<String, String> header : headers.entrySet()) {
+            String key = header.getKey().toLowerCase(Locale.ROOT);
+            String value = header.getValue();
+
+            if (lowercased.putIfAbsent(key, value) != null) {
+                throw new IllegalArgumentException("duplicate header " + key);
+            }
+        }
+
+        headers = Map.copyOf(lowercased);
         body = body.clone();
     }
 

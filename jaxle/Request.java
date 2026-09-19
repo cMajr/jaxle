@@ -1,6 +1,8 @@
 package jaxle;
 
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -38,6 +40,42 @@ public record Request(
      * even on a binary body. A request without a body gives an empty string.
      */
     public String text() {
+        String contentType = headers.get("content-type");
+        if (contentType == null) {
+            return textUtf8();
+        }
+
+        String[] parts = contentType.split(";");
+
+        String charset = "";
+        for (String p : parts) {
+            String part = p.strip();
+            if (part.toLowerCase(Locale.ROOT).startsWith("charset=")) {
+                charset = part.substring("charset=".length()).strip();
+                break;
+            }
+        }
+        
+        if (charset.isEmpty()) {
+            return textUtf8();
+        }
+
+        if (charset.length() > 1 && charset.startsWith("\"") && charset.endsWith("\"")) {
+            charset = charset.substring(1, charset.length() - 1);
+        }
+
+        if (charset.isEmpty()) {
+            return textUtf8();
+        }
+
+        try {
+            return new String(body, charset);
+        } catch (UnsupportedEncodingException e) {
+            throw new HttpException(415, "unsupported charset " + charset);
+        }
+    }
+
+    private String textUtf8() {
         return new String(body, StandardCharsets.UTF_8);
     }
 

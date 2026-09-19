@@ -200,7 +200,10 @@ public class Server {
             case 429 -> "Too Many Requests";
             case 500 -> "Internal Server Error";
             case 501 -> "Not Implemented";
+            case 502 -> "Bad Gateway";
             case 503 -> "Service Unavailable";
+            case 504 -> "Gateway Timeout";
+            case 505 -> "HTTP Version Not Supported";
             default -> "";
         };
     }

@@ -32,12 +32,12 @@ public record Request(
     }
 
     /**
-     * {@return the body decoded as UTF-8}
+     * {@return the body decoded with the charset from the content-type header}
      *
-     * <p>The charset parameter of the {@code Content-Type} header, if any,
-     * is ignored. This method always replaces malformed-input sequences
-     * with the replacement character {@code U+FFFD}, so it never fails,
-     * even on a binary body. A request without a body gives an empty string.
+     * <p>Without a charset parameter, the body is decoded as UTF-8. Bytes
+     * that are not valid in the charset are replaced with {@code U+FFFD}.
+     *
+     * @throws HttpException with status 415 if the charset is not supported
      */
     public String text() {
         String contentType = headers.get("content-type");
@@ -82,7 +82,8 @@ public record Request(
     /**
      * {@return the value of the named path parameter}
      *
-     * <p>The value is taken from the path as is and is not percent-decoded.
+     * <p>The value is percent-decoded as UTF-8. Unlike
+     * {@link #query(String) query}, it keeps a plus sign as is.
      *
      * @param name the name inside the braces of the route pattern
      * @throws IllegalArgumentException if the route has no such parameter
@@ -99,14 +100,14 @@ public record Request(
     /**
      * {@return the named path parameter converted by the given function}
      *
-     * <p>The converter receives the value as it appears in the path. A
-     * converter that throws is taken as a rejection of the value, and the
-     * request is answered with 400.
+     * <p>The converter receives the same value that
+     * {@link #param(String) param(name)} returns.
      *
-     * @param name the parameter name, as written in the route
+     * @param name the name inside the braces of the route pattern
      * @param converter the function applied to the value
-     * @param <T> the type the converter produces
-     * @throws IllegalArgumentException if no path parameter has this name
+     * @param <T> the type the converter returns
+     * @throws IllegalArgumentException if the route has no such parameter
+     * @throws HttpException with status 400 if the converter throws
      */
     public <T> T param(String name, Function<String, T> converter) {
         String value = param(name);
@@ -120,12 +121,15 @@ public record Request(
     /**
      * {@return the value of the named query parameter}
      *
-     * <p>A parameter missing from the query gives {@code null}, while a
-     * parameter given without a value gives an empty string. A name that
-     * repeats in the query keeps its first value. Names and values are
-     * percent-decoded as UTF-8.
+     * <p>A parameter missing from the query gives {@code null}, while one given
+     * without a value gives an empty string. When a name repeats, its first
+     * value is kept.
      *
-     * @param name the parameter name, as it appears in the query
+     * <p>Names and values are percent-decoded as UTF-8. Unlike
+     * {@link #param(String) param}, a plus sign becomes a space here, as in
+     * HTML forms.
+     *
+     * @param name the decoded parameter name
      */
     public String query(String name) {
         return queryParams.get(name);

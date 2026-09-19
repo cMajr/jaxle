@@ -44,8 +44,8 @@ public class Server {
     /**
      * Creates a server bound to the given port.
      *
-     * <p>The port is bound right away. If it is already in use, this
-     * constructor fails before any route is registered.
+     * <p>If the port is 0, the system picks a free one, which
+     * {@link #port()} returns.
      *
      * @param port the port to listen on
      * @throws IOException if the port cannot be bound
@@ -56,12 +56,20 @@ public class Server {
     }
 
     /**
-     * Accepts and handles connections until the process ends.
+     * {@return the port this server listens on}
+     */
+    public int port() {
+        return socket.getLocalPort();
+    }
+
+    /**
+     * Accepts and handles connections, blocking the calling thread.
      *
-     * <p>This method blocks the calling thread and never returns normally.
-     * Connections are served one at a time, with a single request per connection.
+     * <p>This method never returns normally and ends only by throwing an
+     * exception. Connections are served one at a time, with a single request
+     * per connection.
      *
-     * @throws IOException if the listening socket fails
+     * @throws IOException if accepting or closing a connection fails
      */
     public void start() throws IOException {
         while (true) {
@@ -211,15 +219,21 @@ public class Server {
     /**
      * Registers a handler for requests with the given method and path.
      *
-     * <p>A segment of the path written in braces is a path parameter, as in
-     * {@code /users/{id}}. Its value reaches the handler through
-     * {@link Request#param(String)}. A request whose path matches nothing
-     * is answered with 404, a request whose path matches a route with no
-     * handler for its method with 405.
+     * <p>A segment in braces, as in {@code /users/{id}}, declares a path
+     * parameter whose value the handler reads through
+     * {@link Request#param(String)}.
+     *
+     * <p>When the request path matches no route, the server answers with 404.
+     * When the path matches but has no handler for the request method, the
+     * server answers with 405.
      *
      * <p>Registering the same method and path again replaces the previous
-     * handler. An exact path always wins over a pattern, and among patterns
-     * the one registered first wins.
+     * handler. An exact path wins over a pattern even when it has no handler
+     * for the request method, in which case the answer is 405. Among
+     * patterns, the one registered first wins.
+     *
+     * <p>A trailing slash in the path is ignored, which lets {@code /users/}
+     * match {@code /users}.
      *
      * @param method the request method this handler answers
      * @param path the path to match

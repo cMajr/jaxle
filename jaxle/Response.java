@@ -59,8 +59,8 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
     /**
      * {@return a response with status 204 and no body}
      *
-     * <p>The response carries no headers of its own. Neither a body nor a
-     * {@code content-length} reaches the client, as required for this status.
+     * <p>Neither a body nor a {@code content-length} reaches the client, as
+     * required for this status.
      */
     public static Response noContent() {
         return new Response(204, Map.of(), new byte[0]);
@@ -88,10 +88,31 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
         return text(404, content);
     }
 
+    /**
+     * {@return a plain-text response with status 409}
+     *
+     * <p>Same as {@link #text(int, String) text(409, content)}.
+     *
+     * @param content the body text
+     */
     public static Response conflict(String content) {
         return text(409, content);
     }
 
+    /**
+     * {@return a JSON response with the given status}
+     *
+     * <p>The content is encoded in UTF-8, which RFC 8259 requires for JSON
+     * exchanged between systems.
+     *
+     * <p>Unlike {@link #text(int, String) text}, the {@code content-type}
+     * header carries no charset parameter, since the {@code application/json}
+     * media type does not define one. Note that the content is sent as is,
+     * without being parsed or validated as JSON.
+     *
+     * @param status the status code
+     * @param content the JSON text
+     */
     public static Response json(int status, String content) {
         Map<String, String> headers = Map.of("content-type", "application/json");
         byte[] body = content.getBytes(StandardCharsets.UTF_8);
@@ -102,8 +123,7 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
      * {@return a plain-text response with the given status}
      *
      * <p>The body is encoded in UTF-8 and sent as
-     * {@code text/plain; charset=utf-8}. The status code is sent as is,
-     * with an empty reason phrase if the server does not know it.
+     * {@code text/plain; charset=utf-8}.
      *
      * @param status the status code
      * @param content the body text
@@ -118,8 +138,7 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
      * {@return a copy of this response with the given header set}
      *
      * <p>The name is converted to lowercase before it replaces any existing
-     * header with the same name. This instance is immutable and unaffected
-     * by this method call.
+     * header with the same name.
      *
      * @param name the header name, in any case
      * @param value the header value

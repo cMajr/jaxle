@@ -48,17 +48,18 @@ curl -i -d alice localhost:8081/register
 curl localhost:8081/users/1
 ```
 
-There is no build file yet. To use jaxle in your own project, compile
-the `jaxle/` sources together with your code.
+To use Jaxle in your own project, compile the `jaxle/` sources together
+with your code.
 
 ## Limits
 
 - One thread serves all connections, one at a time.
 - One request per connection, with no keep-alive.
-- No read timeouts. A client that stops sending blocks the whole server.
+- A client that stops sending blocks the whole server, since there are
+  no read timeouts.
 - No limits on the length of the request line, the headers or the body.
-- The body is read by `content-length` only. Chunked transfer coding is
-  not supported.
+- The body is read by `content-length` only, without chunked transfer
+  coding.
 - A `HEAD` handler sends its body, which RFC 9110 forbids.
 - No middleware.
 - No JSON parsing or serialization. `Response.json` sends a string as is.

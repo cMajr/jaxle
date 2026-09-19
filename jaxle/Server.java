@@ -226,12 +226,13 @@ public class Server {
      * @param handler the handler called for a matching request
      */
     public void addRoute(Method method, String path, Handler handler) {
-        Map<Method, Handler> inner = this.routes.get(path);
+        String normalizedPath = normalizePath(path);
+        Map<Method, Handler> inner = this.routes.get(normalizedPath);
 
         if (inner == null) {
             inner = new EnumMap<>(Method.class);
             // First method for this path.
-            this.routes.put(path, inner);
+            this.routes.put(normalizedPath, inner);
         }
 
         // Map from routes is modified in place.
@@ -350,20 +351,30 @@ public class Server {
     }
 
     RouteMatch findRoute(String path) {
-        var inner = routes.get(path);
+        var normalizedPath = normalizePath(path);
+
+        var inner = routes.get(normalizedPath);
 
         if (inner != null) {
             return new RouteMatch(inner, Map.of());
         }
 
         for (Map.Entry<String, Map<Method, Handler>> route : routes.entrySet()) {
-            var params = matchPath(route.getKey(), path);
+            var params = matchPath(route.getKey(), normalizedPath);
             if (params != null) {
                 return new RouteMatch(route.getValue(), params);
             }
         }
 
         return null;
+    }
+
+    private static String normalizePath(String path) {
+        if (path.endsWith("/") && !path.equals("/")) {
+            return path.substring(0, path.length() - 1);
+        }
+
+        return path;
     }
 
     Map<String, String> matchPath(String pattern, String path) {

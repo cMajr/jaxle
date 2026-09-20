@@ -172,8 +172,6 @@ public class Server {
 
         byte[] body = response.body();
 
-        // TODO: ignore or reject a user-supplied content-length,
-        // otherwise the response carries two conflicting values.
         if (hasBody) {
             stringBuilder.append("content-length: ").append(body.length).append("\r\n");
         }

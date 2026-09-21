@@ -220,6 +220,8 @@ public class Server {
             stringBuilder.append("content-length: ").append(body.length).append("\r\n");
         }
 
+        stringBuilder.append("connection: close").append("\r\n");
+
         stringBuilder.append("\r\n");
         String head = stringBuilder.toString();
 

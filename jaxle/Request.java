@@ -55,7 +55,7 @@ public record Request(
                 break;
             }
         }
-        
+
         if (charset.isEmpty()) {
             return textUtf8();
         }

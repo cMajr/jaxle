@@ -5,8 +5,12 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public record Response(int status, Map<String, String> headers, byte[] body) {
+    private static final Set<String> SERVER_HEADERS =
+        Set.of("content-length", "connection", "transfer-encoding");
+
     private static final BitSet TOKEN = new BitSet(128);
 
     static {
@@ -25,15 +29,17 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
      * lowercase. By RFC 9110 5.6.2 a name must be a non-empty token, whereas a
      * value must fit the field-value rule (5.5), with no space or tab at the
      * ends. Two names that differ only in case describe the same header and
-     * cannot both be given. A {@code content-length} header is not accepted
-     * here, the server setting it from the length of the body.
+     * cannot both be given. The {@code content-length}, {@code connection}
+     * and {@code transfer-encoding} headers are left to the server and not
+     * accepted here, because they control how the message travels over the
+     * connection.
      *
      * @param status the status code
      * @param headers the response headers, with names in any case
      * @param body the raw body bytes
      * @throws IllegalArgumentException if a name or a value breaks the rules
-     *         above, if two names match ignoring case, or if a
-     *         {@code content-length} header is given
+     *         above, if two names match ignoring case, or if a header
+     *         left to the server is given
      */
     public Response {
         Map<String, String> lowercased = new HashMap<>();
@@ -224,8 +230,8 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
                 + " at index " + invalidNameIndex);
         }
 
-        if (name.equalsIgnoreCase("content-length")) {
-            throw new IllegalArgumentException("content-length cannot be set by user");
+        if (SERVER_HEADERS.contains(name.toLowerCase(Locale.ROOT))) {
+            throw new IllegalArgumentException(name + " cannot be set by user");
         }
     }
 

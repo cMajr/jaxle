@@ -95,6 +95,7 @@ public class Server {
     }
 
     private void handleConnection(Socket client) {
+        Method method = null;
         try {
             client.setSoTimeout(READ_TIMEOUT_MS);
             var in = new BufferedInputStream(client.getInputStream());
@@ -116,12 +117,10 @@ public class Server {
                 throw new HttpException(400, "malformed request line");
             }
 
-            Method method;
-
             try {
                 method = Method.valueOf(parts[0]);
             } catch (IllegalArgumentException e) {
-                writeResponse(out, Response.text(501, reasonPhrase(501)));
+                writeResponse(out, Response.text(501, reasonPhrase(501)), method);
                 return;
             }
 
@@ -129,7 +128,7 @@ public class Server {
             RouteMatch route = findRoute(path);
 
             if (route == null) {
-                writeResponse(out, Response.text(404, reasonPhrase(404)));
+                writeResponse(out, Response.text(404, reasonPhrase(404)), method);
             } else {
                 Handler handler = route.handlers().get(method);
                 if (handler == null) {
@@ -139,11 +138,14 @@ public class Server {
                         .map(Method::name)
                         .collect(Collectors.joining(", "));
 
-                    writeResponse(out, Response.text(405, reasonPhrase(405)).withHeader("Allow", allowedMethods));
+                    writeResponse(
+                        out,
+                        Response.text(405, reasonPhrase(405)).withHeader("Allow", allowedMethods),
+                        method);
                 } else {
                     Map<String, String> queryParams = parseQuery(rawQuery(parts[1]));
                     Request request = new Request(method, path, headers, body, route.params(), queryParams);
-                    writeResponse(out, handler.handle(request));
+                    writeResponse(out, handler.handle(request), method);
                 }
             }
         } catch (HttpException e) {
@@ -158,7 +160,7 @@ public class Server {
 
             try {
                 var out = client.getOutputStream();
-                writeResponse(out, Response.text(e.status(), message));
+                writeResponse(out, Response.text(e.status(), message), method);
             } catch (Exception suppressed) {
                 // Connection is already broken.
             }
@@ -166,7 +168,7 @@ public class Server {
             log.log(DEBUG, "Request timeout");
             try {
                 var out = client.getOutputStream();
-                writeResponse(out, Response.text(408, reasonPhrase(408)));
+                writeResponse(out, Response.text(408, reasonPhrase(408)), method);
             } catch (Exception suppressed) {
                 // Connection is already broken.
             }
@@ -174,7 +176,7 @@ public class Server {
             log.log(ERROR, "Request failed", e);
             try {
                 var out = client.getOutputStream();
-                writeResponse(out, Response.text(500, reasonPhrase(500)));
+                writeResponse(out, Response.text(500, reasonPhrase(500)), method);
             } catch (Exception suppressed) {
                 // Connection is already broken, the real cause is logged above.
             }
@@ -187,7 +189,7 @@ public class Server {
         }
     }
 
-    void writeResponse(OutputStream out, Response response) throws IOException {
+    void writeResponse(OutputStream out, Response response, Method method) throws IOException {
         int status = response.status();
         boolean hasBody = status != 204 && status != 304;
 
@@ -214,7 +216,7 @@ public class Server {
 
         out.write(head.getBytes(StandardCharsets.ISO_8859_1));
 
-        if (hasBody) {
+        if (hasBody && method != Method.HEAD) {
             out.write(body);
         }
     }

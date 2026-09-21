@@ -485,6 +485,10 @@ public class Server {
                 throw new HttpException(400, "invalid header name");
             }
 
+            if (hasControlCharacter(value)) {
+                throw new HttpException(400, "invalid header value");
+            }
+
             headerCount++;
             if (headerCount > MAX_HEADERS) {
                 throw new HttpException(431, "more than " + MAX_HEADERS + " headers");
@@ -529,5 +533,18 @@ public class Server {
         }
 
         return payloadBytes;
+    }
+
+    private static boolean hasControlCharacter(String value) {
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            boolean allowed = c == '\t' || (c >= 0x20 && c != 0x7F);
+
+            if (!allowed) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

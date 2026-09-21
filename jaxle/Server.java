@@ -147,7 +147,7 @@ public class Server {
                         // Connection is already broken.
                     }
                 } catch (SocketTimeoutException e) {
-                    log.log(DEBUG, "Request timeout", e);
+                    log.log(DEBUG, "Request timeout");
                     try {
                         var out = client.getOutputStream();
                         writeResponse(out, Response.text(408, reasonPhrase(408)));
@@ -155,7 +155,7 @@ public class Server {
                         // Connection is already broken.
                     }
                 } catch (Exception e) {
-                    log.log(ERROR, "Request failed");
+                    log.log(ERROR, "Request failed", e);
                     try {
                         var out = client.getOutputStream();
                         writeResponse(out, Response.text(500, reasonPhrase(500)));

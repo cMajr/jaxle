@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static java.lang.System.Logger.Level.DEBUG;
@@ -30,6 +31,8 @@ public class Server {
     private static final System.Logger log = System.getLogger("jaxle.Server");
 
     private final ServerSocket socket;
+
+    private final AtomicBoolean started = new AtomicBoolean();
 
     // Path is resolved first to distinguish 404 from 405.
     // When several patterns match, the first registered one wins.
@@ -78,8 +81,13 @@ public class Server {
      * including one handler serving several requests at once.
      *
      * @throws IOException if accepting a connection fails
+     * @throws IllegalStateException if the server has already been started
      */
     public void start() throws IOException {
+        if (!started.compareAndSet(false, true)) {
+            throw new IllegalStateException("server already started");
+        }
+
         while (true) {
             Socket client = socket.accept();
             Thread.ofVirtual().start(() -> handleConnection(client));
@@ -264,8 +272,13 @@ public class Server {
      * @param method the request method this handler answers
      * @param path the path to match
      * @param handler the handler called for a matching request
+     * @throws IllegalStateException if the server has already been started
      */
     public void addRoute(Method method, String path, Handler handler) {
+        if (started.get()) {
+            throw new IllegalStateException("cannot add routes after start()");
+        }
+
         String normalizedPath = normalizePath(path);
         Map<Method, Handler> inner = this.routes.get(normalizedPath);
 

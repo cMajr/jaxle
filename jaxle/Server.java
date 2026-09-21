@@ -487,7 +487,11 @@ public class Server {
                 throw new HttpException(431, "more than " + MAX_HEADERS + " headers");
             }
 
-            headers.put(name, value);
+            if (headers.containsKey(name) && (name.equals("content-length") || name.equals("host"))) {
+                throw new HttpException(400, "duplicate " + name);
+            }
+
+            headers.merge(name, value, (old, add) -> old + ", " + add);
         }
 
         return headers;

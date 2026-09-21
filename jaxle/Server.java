@@ -463,7 +463,13 @@ public class Server {
 
         while (true) {
             String headerLine = readLine(in, 431);
-            if (headerLine == null || headerLine.isEmpty()) break;
+
+            if (headerLine == null) {
+                throw new HttpException(400, "incomplete headers");
+            }
+
+            if (headerLine.isEmpty()) break;
+
             String[] headerParts = headerLine.split(":", 2);
             if (headerParts.length != 2) {
                 throw new HttpException(400, "malformed header line");

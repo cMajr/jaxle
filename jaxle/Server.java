@@ -104,7 +104,7 @@ public class Server {
                     try {
                         method = Method.valueOf(parts[0]);
                     } catch (IllegalArgumentException e) {
-                        writeResponse(out, Response.text(501, "Not Implemented"));
+                        writeResponse(out, Response.text(501, reasonPhrase(501)));
                         continue;
                     }
 
@@ -112,7 +112,7 @@ public class Server {
                     RouteMatch route = findRoute(path);
 
                     if (route == null) {
-                        writeResponse(out, Response.text(404, "Not Found"));
+                        writeResponse(out, Response.text(404, reasonPhrase(404)));
                     } else {
                         Handler handler = route.handlers().get(method);
                         if (handler == null) {
@@ -122,7 +122,7 @@ public class Server {
                                 .map(Method::name)
                                 .collect(Collectors.joining(", "));
 
-                            writeResponse(out, Response.text(405, "Method Not Allowed").withHeader("Allow", allowedMethods));
+                            writeResponse(out, Response.text(405, reasonPhrase(405)).withHeader("Allow", allowedMethods));
                         } else {
                             Map<String, String> queryParams = parseQuery(rawQuery(parts[1]));
                             Request request = new Request(method, path, headers, body, route.params(), queryParams);
@@ -157,7 +157,7 @@ public class Server {
                     log.log(ERROR, "Request failed");
                     try {
                         var out = client.getOutputStream();
-                        writeResponse(out, Response.text(500, "Internal Server Error"));
+                        writeResponse(out, Response.text(500, reasonPhrase(500)));
                     } catch (Exception suppressed) {
                         // Connection is already broken, the real cause is logged above.
                     }

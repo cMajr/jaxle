@@ -7,7 +7,7 @@ underneath. Routes are registered with `server.get`, `server.post` and
 similar methods, where a segment in braces such as `/users/{id}` becomes
 a path parameter.
 
-Jaxle requires Java 17 or later.
+Jaxle requires Java 21 or later.
 
 ```java
 import java.io.IOException;
@@ -53,13 +53,9 @@ with your code.
 
 ## Limits
 
-- One thread serves all connections, one at a time.
-- One request per connection, with no keep-alive.
-- A client that stops sending blocks the whole server, since there are
-  no read timeouts.
-- No limits on the length of the request line, the headers or the body.
-- The body is read by `content-length` only, without chunked transfer
-  coding.
-- A `HEAD` handler sends its body, which RFC 9110 forbids.
+- Each connection serves one request.
+- Timeouts and sizes are fixed (20 s per read, 8 KiB per line, 100 headers, 500 KiB body).
+- Request bodies need `content-length`. Chunked encoding is not supported.
+- `HEAD` responses include the body.
 - No middleware.
-- No JSON parsing or serialization. `Response.json` sends a string as is.
+- No JSON mapping. `Response.json` takes a string you build yourself.

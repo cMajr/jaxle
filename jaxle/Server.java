@@ -170,7 +170,7 @@ public class Server {
             } catch (Exception suppressed) {
                 // Connection is already broken.
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             log.log(ERROR, "Request failed", e);
             try {
                 var out = client.getOutputStream();

@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumMap;
@@ -20,6 +21,8 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 
 public class Server {
+    private static final int READ_TIMEOUT_MS = 20_000;
+
     private static final System.Logger log = System.getLogger("jaxle.Server");
 
     private final ServerSocket socket;
@@ -76,6 +79,7 @@ public class Server {
             Socket client = socket.accept();
             try (client) {
                 try {
+                    client.setSoTimeout(READ_TIMEOUT_MS);
                     var in = new BufferedInputStream(client.getInputStream());
                     var out = client.getOutputStream();
                     String requestLine = readLine(in);
@@ -141,8 +145,16 @@ public class Server {
                     } catch (Exception suppressed) {
                         // Connection is already broken.
                     }
+                } catch (SocketTimeoutException e) {
+                    log.log(DEBUG, "Request timeout", e);
+                    try {
+                        var out = client.getOutputStream();
+                        writeResponse(out, Response.text(408, reasonPhrase(408)));
+                    } catch (Exception suppressed) {
+                        // Connection is already broken.
+                    }
                 } catch (Exception e) {
-                    log.log(ERROR, "Request failed", e);
+                    log.log(ERROR, "Request failed");
                     try {
                         var out = client.getOutputStream();
                         writeResponse(out, Response.text(500, "Internal Server Error"));
@@ -199,6 +211,7 @@ public class Server {
             case 403 -> "Forbidden";
             case 404 -> "Not Found";
             case 405 -> "Method Not Allowed";
+            case 408 -> "Request Timeout";
             case 409 -> "Conflict";
             case 413 -> "Content Too Large";
             case 415 -> "Unsupported Media Type";

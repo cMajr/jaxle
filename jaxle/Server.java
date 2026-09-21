@@ -438,7 +438,10 @@ public class Server {
         while (true) {
             int b = in.read();
             if (b == '\n') break;
-            if (b == '\r') continue;
+            if (b == '\r') {
+                if (in.read() == '\n') break;
+                throw new HttpException(400, "bare CR in line");
+            }
             if (b == -1) {
                 if (buf.size() == 0) {
                     return null;

@@ -56,6 +56,5 @@ with your code.
 - Each connection serves one request.
 - Timeouts and sizes are fixed (20 s per read, 8 KiB per line, 100 headers, 500 KiB body).
 - Request bodies need `content-length`. Chunked encoding is not supported.
-- `HEAD` responses include the body.
 - No middleware.
 - No JSON mapping. `Response.json` takes a string you build yourself.

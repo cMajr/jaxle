@@ -13,6 +13,9 @@ import static jaxle.Response.ok;
 import java.util.HashMap;
 import java.util.Map;
 
+// Since the server may call handlers from several threads at once, both
+// methods are synchronized to let only one request at a time touch the map
+// and the counter.
 public class Users {
     private final Map<Integer, String> users = new HashMap<>();
     private int nextId = 0;
@@ -22,7 +25,7 @@ public class Users {
         server.get("/users/{id}", this::findById);
     }
 
-    Response register(Request request) {
+    synchronized Response register(Request request) {
         String username = request.text().strip();
 
         if (username.isEmpty()) {
@@ -35,18 +38,17 @@ public class Users {
 
         nextId++;
         users.put(nextId, username);
-        var res = users.get(nextId);
-        return created("/users/" + nextId, res);
+        return created("/users/" + nextId, username);
     }
 
-    Response findById(Request request) {
+    synchronized Response findById(Request request) {
         int id = request.param("id", Integer::parseInt);
-        var res = users.get(id);
+        String username = users.get(id);
 
-        if (res == null) {
+        if (username == null) {
             return notFound("User with id " + id + " not found");
         }
 
-        return ok(res);
+        return ok(username);
     }
 }

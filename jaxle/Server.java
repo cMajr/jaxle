@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
+import static jaxle.Response.invalidNameIndex;
 
 public class Server {
     private static final int READ_TIMEOUT_MS = 20_000;
@@ -468,12 +469,19 @@ public class Server {
                 throw new HttpException(400, "malformed header line");
             }
 
+            String name = headerParts[0].toLowerCase(Locale.ROOT);
+            String value = headerParts[1].strip();
+
+            if (name.isEmpty() || invalidNameIndex(name) != -1) {
+                throw new HttpException(400, "invalid header name");
+            }
+
             headerCount++;
             if (headerCount > MAX_HEADERS) {
                 throw new HttpException(431, "more than " + MAX_HEADERS + " headers");
             }
 
-            headers.put(headerParts[0].toLowerCase(Locale.ROOT), headerParts[1].strip());
+            headers.put(name, value);
         }
 
         return headers;

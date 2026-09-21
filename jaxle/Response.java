@@ -180,7 +180,7 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
         return new Response(status, copy, this.body);
     }
 
-    private static int invalidNameIndex(String name) {
+    static int invalidNameIndex(String name) {
         for (int i = 0; i < name.length(); i++) {
             char c = name.charAt(i);
             if (!TOKEN.get(c)) {

@@ -11,6 +11,7 @@ import java.net.SocketTimeoutException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -131,9 +132,17 @@ public class Server {
                 writeResponse(out, Response.text(404, reasonPhrase(404)), method);
             } else {
                 Handler handler = route.handlers().get(method);
+                if (handler == null && method == Method.HEAD) {
+                    handler = route.handlers().get(Method.GET);
+                }
+
                 if (handler == null) {
-                    var allowedMethods = route.handlers()
-                        .keySet()
+                    var allowed = EnumSet.copyOf(route.handlers().keySet());
+                    if (allowed.contains(Method.GET)) {
+                        allowed.add(Method.HEAD);
+                    }
+
+                    var allowedMethods = allowed
                         .stream()
                         .map(Method::name)
                         .collect(Collectors.joining(", "));

@@ -136,20 +136,15 @@ public class Server {
                     handler = route.handlers().get(Method.GET);
                 }
 
+                if (handler == null && method == Method.OPTIONS) {
+                    writeResponse(out, Response.noContent().withHeader("allow", allowedMethods(route)), method);
+                    return;
+                }
+
                 if (handler == null) {
-                    var allowed = EnumSet.copyOf(route.handlers().keySet());
-                    if (allowed.contains(Method.GET)) {
-                        allowed.add(Method.HEAD);
-                    }
-
-                    var allowedMethods = allowed
-                        .stream()
-                        .map(Method::name)
-                        .collect(Collectors.joining(", "));
-
                     writeResponse(
                         out,
-                        Response.text(405, reasonPhrase(405)).withHeader("Allow", allowedMethods),
+                        Response.text(405, reasonPhrase(405)).withHeader("allow", allowedMethods(route)),
                         method);
                 } else {
                     Map<String, String> queryParams = parseQuery(rawQuery(parts[1]));
@@ -263,6 +258,20 @@ public class Server {
         };
     }
 
+    private static String allowedMethods(RouteMatch route) {
+        var allowed = EnumSet.copyOf(route.handlers().keySet());
+        allowed.add(Method.OPTIONS);
+
+        if (allowed.contains(Method.GET)) {
+            allowed.add(Method.HEAD);
+        }
+
+        return allowed
+            .stream()
+            .map(Method::name)
+            .collect(Collectors.joining(", "));
+    }
+
     /**
      * Registers a handler for requests with the given method and path.
      *
@@ -272,7 +281,10 @@ public class Server {
      *
      * <p>When the request path matches no route, the server answers with 404.
      * When the path matches but has no handler for the request method, the
-     * server answers with 405.
+     * server answers with 405, except for HEAD and OPTIONS. A HEAD request
+     * without its own handler is served by the GET handler with the response
+     * body left out, while an OPTIONS request without one gets 204 with the
+     * methods of the path listed in the {@code allow} header.
      *
      * <p>Registering the same method and path again replaces the previous
      * handler. An exact path wins over a pattern even when it has no handler

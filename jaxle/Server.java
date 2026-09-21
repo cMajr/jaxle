@@ -22,6 +22,7 @@ import static java.lang.System.Logger.Level.ERROR;
 
 public class Server {
     private static final int READ_TIMEOUT_MS = 20_000;
+    private static final int MAX_BODY_BYTES = 500 * 1024;
 
     private static final System.Logger log = System.getLogger("jaxle.Server");
 
@@ -477,6 +478,10 @@ public class Server {
 
         if (length < 0) {
             throw new HttpException(400, "invalid content-length");
+        }
+
+        if (length > MAX_BODY_BYTES) {
+            throw new HttpException(413, "body exceeds " + MAX_BODY_BYTES + " bytes");
         }
 
         byte[] payloadBytes = in.readNBytes(length);

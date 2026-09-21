@@ -23,6 +23,7 @@ import static java.lang.System.Logger.Level.ERROR;
 public class Server {
     private static final int READ_TIMEOUT_MS = 20_000;
     private static final int MAX_BODY_BYTES = 500 * 1024;
+    private static final int MAX_LINE_BYTES = 8 * 1024;
 
     private static final System.Logger log = System.getLogger("jaxle.Server");
 
@@ -83,7 +84,7 @@ public class Server {
                     client.setSoTimeout(READ_TIMEOUT_MS);
                     var in = new BufferedInputStream(client.getInputStream());
                     var out = client.getOutputStream();
-                    String requestLine = readLine(in);
+                    String requestLine = readLine(in, 414);
 
                     // Client closed the connection without sending any data.
                     if (requestLine == null) {
@@ -215,9 +216,11 @@ public class Server {
             case 408 -> "Request Timeout";
             case 409 -> "Conflict";
             case 413 -> "Content Too Large";
+            case 414 -> "URI Too Long";
             case 415 -> "Unsupported Media Type";
             case 422 -> "Unprocessable Content";
             case 429 -> "Too Many Requests";
+            case 431 -> "Request Header Fields Too Large";
             case 500 -> "Internal Server Error";
             case 501 -> "Not Implemented";
             case 502 -> "Bad Gateway";
@@ -428,7 +431,7 @@ public class Server {
         return params;
     }
 
-    String readLine(InputStream in) throws IOException {
+    String readLine(InputStream in, int tooLongStatus) throws IOException {
         var buf = new ByteArrayOutputStream();
         while (true) {
             int b = in.read();
@@ -441,6 +444,11 @@ public class Server {
                     break;
                 }
             }
+
+            if (buf.size() >= MAX_LINE_BYTES) {
+                throw new HttpException(tooLongStatus, "line exceeds " + MAX_LINE_BYTES + " bytes");
+            }
+
             buf.write(b);
         }
 
@@ -451,7 +459,7 @@ public class Server {
         Map<String, String> headers = new HashMap<>();
 
         while (true) {
-            String headerLine = readLine(in);
+            String headerLine = readLine(in, 431);
             if (headerLine == null || headerLine.isEmpty()) break;
             String[] headerParts = headerLine.split(":", 2);
             if (headerParts.length != 2) {

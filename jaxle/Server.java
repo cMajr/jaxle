@@ -24,6 +24,7 @@ public class Server {
     private static final int READ_TIMEOUT_MS = 20_000;
     private static final int MAX_BODY_BYTES = 500 * 1024;
     private static final int MAX_LINE_BYTES = 8 * 1024;
+    private static final int MAX_HEADERS = 100;
 
     private static final System.Logger log = System.getLogger("jaxle.Server");
 
@@ -457,6 +458,7 @@ public class Server {
 
     Map<String, String> readHeaders(InputStream in) throws IOException {
         Map<String, String> headers = new HashMap<>();
+        int headerCount = 0;
 
         while (true) {
             String headerLine = readLine(in, 431);
@@ -465,6 +467,12 @@ public class Server {
             if (headerParts.length != 2) {
                 throw new HttpException(400, "malformed header line");
             }
+
+            headerCount++;
+            if (headerCount > MAX_HEADERS) {
+                throw new HttpException(431, "more than " + MAX_HEADERS + " headers");
+            }
+
             headers.put(headerParts[0].toLowerCase(Locale.ROOT), headerParts[1].strip());
         }
 

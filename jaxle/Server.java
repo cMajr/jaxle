@@ -73,99 +73,108 @@ public class Server {
      * Accepts and handles connections, blocking the calling thread.
      *
      * <p>This method never returns normally and ends only by throwing an
-     * exception. Connections are served one at a time, with a single request
-     * per connection.
+     * exception. Each connection is served in its own virtual thread and
+     * carries a single request. Note that handlers may run concurrently,
+     * including one handler serving several requests at once.
      *
-     * @throws IOException if accepting or closing a connection fails
+     * @throws IOException if accepting a connection fails
      */
     public void start() throws IOException {
         while (true) {
             Socket client = socket.accept();
-            try (client) {
-                try {
-                    client.setSoTimeout(READ_TIMEOUT_MS);
-                    var in = new BufferedInputStream(client.getInputStream());
-                    var out = client.getOutputStream();
-                    String requestLine = readLine(in, 414);
+            Thread.ofVirtual().start(() -> handleConnection(client));
+        }
+    }
 
-                    // Client closed the connection without sending any data.
-                    if (requestLine == null) {
-                        continue;
-                    }
+    private void handleConnection(Socket client) {
+        try {
+            client.setSoTimeout(READ_TIMEOUT_MS);
+            var in = new BufferedInputStream(client.getInputStream());
+            var out = client.getOutputStream();
+            String requestLine = readLine(in, 414);
 
-                    var headers = readHeaders(in);
-                    byte[] body = readBody(in, headers);
+            // Client closed the connection without sending any data.
+            if (requestLine == null) {
+                return;
+            }
 
-                    // For example "GET /users/42?page=2 HTTP/1.1" gives method, target and version.
-                    String[] parts = requestLine.split(" ");
+            var headers = readHeaders(in);
+            byte[] body = readBody(in, headers);
 
-                    if (parts.length != 3) {
-                        throw new HttpException(400, "malformed request line");
-                    }
+            // For example "GET /users/42?page=2 HTTP/1.1" gives method, target and version.
+            String[] parts = requestLine.split(" ");
 
-                    Method method;
+            if (parts.length != 3) {
+                throw new HttpException(400, "malformed request line");
+            }
 
-                    try {
-                        method = Method.valueOf(parts[0]);
-                    } catch (IllegalArgumentException e) {
-                        writeResponse(out, Response.text(501, reasonPhrase(501)));
-                        continue;
-                    }
+            Method method;
 
-                    String path = stripQuery(parts[1]);
-                    RouteMatch route = findRoute(path);
+            try {
+                method = Method.valueOf(parts[0]);
+            } catch (IllegalArgumentException e) {
+                writeResponse(out, Response.text(501, reasonPhrase(501)));
+                return;
+            }
 
-                    if (route == null) {
-                        writeResponse(out, Response.text(404, reasonPhrase(404)));
-                    } else {
-                        Handler handler = route.handlers().get(method);
-                        if (handler == null) {
-                            var allowedMethods = route.handlers()
-                                .keySet()
-                                .stream()
-                                .map(Method::name)
-                                .collect(Collectors.joining(", "));
+            String path = stripQuery(parts[1]);
+            RouteMatch route = findRoute(path);
 
-                            writeResponse(out, Response.text(405, reasonPhrase(405)).withHeader("Allow", allowedMethods));
-                        } else {
-                            Map<String, String> queryParams = parseQuery(rawQuery(parts[1]));
-                            Request request = new Request(method, path, headers, body, route.params(), queryParams);
-                            writeResponse(out, handler.handle(request));
-                        }
-                    }
-                } catch (HttpException e) {
-                    String message;
-                    if (e.status() >= 500) {
-                        log.log(ERROR, "Request failed", e);
-                        message = reasonPhrase(e.status());
-                    } else {
-                        log.log(DEBUG, e.getMessage());
-                        message = e.getMessage();
-                    }
+            if (route == null) {
+                writeResponse(out, Response.text(404, reasonPhrase(404)));
+            } else {
+                Handler handler = route.handlers().get(method);
+                if (handler == null) {
+                    var allowedMethods = route.handlers()
+                        .keySet()
+                        .stream()
+                        .map(Method::name)
+                        .collect(Collectors.joining(", "));
 
-                    try {
-                        var out = client.getOutputStream();
-                        writeResponse(out, Response.text(e.status(), message));
-                    } catch (Exception suppressed) {
-                        // Connection is already broken.
-                    }
-                } catch (SocketTimeoutException e) {
-                    log.log(DEBUG, "Request timeout");
-                    try {
-                        var out = client.getOutputStream();
-                        writeResponse(out, Response.text(408, reasonPhrase(408)));
-                    } catch (Exception suppressed) {
-                        // Connection is already broken.
-                    }
-                } catch (Exception e) {
-                    log.log(ERROR, "Request failed", e);
-                    try {
-                        var out = client.getOutputStream();
-                        writeResponse(out, Response.text(500, reasonPhrase(500)));
-                    } catch (Exception suppressed) {
-                        // Connection is already broken, the real cause is logged above.
-                    }
+                    writeResponse(out, Response.text(405, reasonPhrase(405)).withHeader("Allow", allowedMethods));
+                } else {
+                    Map<String, String> queryParams = parseQuery(rawQuery(parts[1]));
+                    Request request = new Request(method, path, headers, body, route.params(), queryParams);
+                    writeResponse(out, handler.handle(request));
                 }
+            }
+        } catch (HttpException e) {
+            String message;
+            if (e.status() >= 500) {
+                log.log(ERROR, "Request failed", e);
+                message = reasonPhrase(e.status());
+            } else {
+                log.log(DEBUG, e.getMessage());
+                message = e.getMessage();
+            }
+
+            try {
+                var out = client.getOutputStream();
+                writeResponse(out, Response.text(e.status(), message));
+            } catch (Exception suppressed) {
+                // Connection is already broken.
+            }
+        } catch (SocketTimeoutException e) {
+            log.log(DEBUG, "Request timeout");
+            try {
+                var out = client.getOutputStream();
+                writeResponse(out, Response.text(408, reasonPhrase(408)));
+            } catch (Exception suppressed) {
+                // Connection is already broken.
+            }
+        } catch (Exception e) {
+            log.log(ERROR, "Request failed", e);
+            try {
+                var out = client.getOutputStream();
+                writeResponse(out, Response.text(500, reasonPhrase(500)));
+            } catch (Exception suppressed) {
+                // Connection is already broken, the real cause is logged above.
+            }
+        } finally {
+            try {
+                client.close();
+            } catch (IOException e) {
+                // nothing to do
             }
         }
     }

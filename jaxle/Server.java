@@ -97,7 +97,7 @@ public class Server {
 
     private void handleConnection(Socket client) {
         try {
-            Method method = null;
+            boolean headRequest = false;
             Response response;
             try {
                 client.setSoTimeout(READ_TIMEOUT_MS);
@@ -119,7 +119,8 @@ public class Server {
                     throw new HttpException(400, "malformed request line");
                 }
 
-                method = parseMethod(parts[0]);
+                Method method = parseMethod(parts[0]);
+                headRequest = method == Method.HEAD;
                 String target = parts[1];
                 response = method == null ? errorResponse(501) : dispatch(method, target, headers, body);
             } catch (HttpException e) {
@@ -143,7 +144,7 @@ public class Server {
 
             try {
                 var out = client.getOutputStream();
-                writeResponse(out, response, method);
+                writeResponse(out, response, headRequest);
             } catch (IOException e) {
                 // Client went away before the response was written.
             }
@@ -189,9 +190,9 @@ public class Server {
         return response;
     }
 
-    void writeResponse(OutputStream out, Response response, Method method) throws IOException {
+    void writeResponse(OutputStream out, Response response, boolean headRequest) throws IOException {
         int status = response.status();
-        boolean hasBody = status != 204 && status != 304;
+        boolean statusAllowsBody = status != 204 && status != 304;
 
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder
@@ -207,7 +208,8 @@ public class Server {
 
         byte[] body = response.body();
 
-        if (hasBody) {
+        // A response to HEAD keeps the content-length a GET would get (RFC 9110 8.6).
+        if (statusAllowsBody) {
             stringBuilder.append("content-length: ").append(body.length).append("\r\n");
         }
 
@@ -218,7 +220,7 @@ public class Server {
 
         out.write(head.getBytes(StandardCharsets.ISO_8859_1));
 
-        if (hasBody && method != Method.HEAD) {
+        if (statusAllowsBody && !headRequest) {
             out.write(body);
         }
     }

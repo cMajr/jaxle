@@ -110,15 +110,11 @@ public class Server {
                     return;
                 }
 
-                var headers = readHeaders(in);
+                Map<String, String> headers = readHeaders(in);
                 byte[] body = readBody(in, headers);
                 // For example "GET /api/orders/1043/items?limit=20&offset=40 HTTP/1.1"
                 // gives method, target and version.
-                String[] parts = requestLine.split(" ");
-
-                if (parts.length != 3) {
-                    throw new HttpException(400, "malformed request line");
-                }
+                String[] parts = splitRequestLine(requestLine);
 
                 Version version = parseVersion(parts[2]);
                 String target = parts[1];
@@ -248,6 +244,22 @@ public class Server {
         if (statusAllowsBody && !headRequest) {
             out.write(body);
         }
+    }
+
+    private static String[] splitRequestLine(String requestLine) {
+        String[] parts = requestLine.split(" ", -1);
+
+        if (parts.length != 3) {
+            throw new HttpException(400, "malformed request line");
+        }
+
+        for (String part : parts) {
+            if (part.isEmpty()) {
+                throw new HttpException(400, "malformed request line");
+            }
+        }
+
+        return parts;
     }
 
     private static Version parseVersion(String version) {

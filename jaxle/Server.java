@@ -129,6 +129,8 @@ public class Server {
 
                 if (version.major() != 1) {
                     response = Response.text(505, "only HTTP/1.x is supported");
+                } else if (version.minor() >= 1 && !headers.containsKey("host")) {
+                    throw new HttpException(400, "missing host header");
                 } else if (method == null) {
                     response = errorResponse(501);
                 } else {

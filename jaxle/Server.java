@@ -110,8 +110,8 @@ public class Server {
 
             var headers = readHeaders(in);
             byte[] body = readBody(in, headers);
-
-            // For example "GET /users/42?page=2 HTTP/1.1" gives method, target and version.
+            // For example "GET /api/orders/1043/items?limit=20&offset=40 HTTP/1.1"
+            // gives method, target and version.
             String[] parts = requestLine.split(" ");
 
             if (parts.length != 3) {
@@ -125,33 +125,8 @@ public class Server {
                 return;
             }
 
-            String path = stripQuery(parts[1]);
-            RouteMatch route = findRoute(path);
-
-            if (route == null) {
-                writeResponse(out, errorResponse(404), method);
-            } else {
-                Handler handler = route.handlers().get(method);
-                if (handler == null && method == Method.HEAD) {
-                    handler = route.handlers().get(Method.GET);
-                }
-
-                if (handler == null && method == Method.OPTIONS) {
-                    writeResponse(out, Response.noContent().withHeader("allow", allowedMethods(route)), method);
-                    return;
-                }
-
-                if (handler == null) {
-                    writeResponse(
-                        out,
-                        errorResponse(405).withHeader("allow", allowedMethods(route)),
-                        method);
-                } else {
-                    Map<String, String> queryParams = parseQuery(rawQuery(parts[1]));
-                    Request request = new Request(method, path, headers, body, route.params(), queryParams);
-                    writeResponse(out, handler.handle(request), method);
-                }
-            }
+            String target = parts[1];
+            writeResponse(out, dispatch(method, target, headers, body), method);
         } catch (HttpException e) {
             String message;
             if (e.status() >= 500) {
@@ -191,6 +166,33 @@ public class Server {
                 // nothing to do
             }
         }
+    }
+
+    private Response dispatch(Method method, String target, Map<String, String> headers, byte[] body) {
+        String path = stripQuery(target);
+        RouteMatch route = findRoute(path);
+
+        if (route == null) {
+            return errorResponse(404);
+        }
+
+        Handler handler = route.handlers().get(method);
+
+        if (handler == null && method == Method.HEAD) {
+            handler = route.handlers().get(Method.GET);
+        }
+
+        if (handler == null && method == Method.OPTIONS) {
+            return Response.noContent().withHeader("allow", allowedMethods(route));
+        }
+
+        if (handler == null) {
+            return errorResponse(405).withHeader("allow", allowedMethods(route));
+        }
+
+        Map<String, String> queryParams = parseQuery(rawQuery(target));
+        Request request = new Request(method, path, headers, body, route.params(), queryParams);
+        return handler.handle(request);
     }
 
     void writeResponse(OutputStream out, Response response, Method method) throws IOException {

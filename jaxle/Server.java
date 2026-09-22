@@ -121,7 +121,7 @@ public class Server {
             try {
                 method = Method.valueOf(parts[0]);
             } catch (IllegalArgumentException e) {
-                writeResponse(out, Response.text(501, reasonPhrase(501)), method);
+                writeResponse(out, errorResponse(501), method);
                 return;
             }
 
@@ -129,7 +129,7 @@ public class Server {
             RouteMatch route = findRoute(path);
 
             if (route == null) {
-                writeResponse(out, Response.text(404, reasonPhrase(404)), method);
+                writeResponse(out, errorResponse(404), method);
             } else {
                 Handler handler = route.handlers().get(method);
                 if (handler == null && method == Method.HEAD) {
@@ -144,7 +144,7 @@ public class Server {
                 if (handler == null) {
                     writeResponse(
                         out,
-                        Response.text(405, reasonPhrase(405)).withHeader("allow", allowedMethods(route)),
+                        errorResponse(405).withHeader("allow", allowedMethods(route)),
                         method);
                 } else {
                     Map<String, String> queryParams = parseQuery(rawQuery(parts[1]));
@@ -172,7 +172,7 @@ public class Server {
             log.log(DEBUG, "Request timeout");
             try {
                 var out = client.getOutputStream();
-                writeResponse(out, Response.text(408, reasonPhrase(408)), method);
+                writeResponse(out, errorResponse(408), method);
             } catch (Exception suppressed) {
                 // Connection is already broken.
             }
@@ -180,7 +180,7 @@ public class Server {
             log.log(ERROR, "Request failed", e);
             try {
                 var out = client.getOutputStream();
-                writeResponse(out, Response.text(500, reasonPhrase(500)), method);
+                writeResponse(out, errorResponse(500), method);
             } catch (Exception suppressed) {
                 // Connection is already broken, the real cause is logged above.
             }
@@ -225,6 +225,10 @@ public class Server {
         if (hasBody && method != Method.HEAD) {
             out.write(body);
         }
+    }
+
+    private static Response errorResponse(int status) {
+        return Response.text(status, reasonPhrase(status));
     }
 
     private static String reasonPhrase(int status) {

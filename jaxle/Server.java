@@ -40,6 +40,7 @@ public class Server {
     private final Map<String, Map<Method, Handler>> routes = new LinkedHashMap<>();
 
     private record RouteMatch(Map<Method, Handler> handlers, Map<String, String> params) {}
+    private record Version(int major, int minor) {}
 
     /**
      * Creates a server bound to port 8080.
@@ -119,12 +120,20 @@ public class Server {
                     throw new HttpException(400, "malformed request line");
                 }
 
+                Version version = parseVersion(parts[2]);
+                String target = parts[1];
                 Method method = parseMethod(parts[0]);
                 // Must stay above dispatch(...); otherwise this line is skipped when
                 // a HEAD handler throws, and the 500 from the catch goes out with a body.
                 headRequest = method == Method.HEAD;
-                String target = parts[1];
-                response = method == null ? errorResponse(501) : dispatch(method, target, headers, body);
+
+                if (version.major() != 1) {
+                    response = Response.text(505, "only HTTP/1.x is supported");
+                } else if (method == null) {
+                    response = errorResponse(501);
+                } else {
+                    response = dispatch(method, target, headers, body);
+                }
             } catch (HttpException e) {
                 String message;
                 if (e.status() >= 500) {
@@ -237,6 +246,25 @@ public class Server {
         if (statusAllowsBody && !headRequest) {
             out.write(body);
         }
+    }
+
+    private static Version parseVersion(String version) {
+        if (!version.startsWith("HTTP/")
+            || version.length() != 8
+            || version.charAt(6) != '.'
+            || !isDigit(version.charAt(5)) || !isDigit(version.charAt(7))
+        ) {
+            throw new HttpException(400, "invalid HTTP version");
+        }
+
+        int major = version.charAt(5) - '0';
+        int minor = version.charAt(7) - '0';
+
+        return new Version(major, minor);
+    }
+
+    private static boolean isDigit(char c) {
+        return c >= '0' && c <= '9';
     }
 
     private static Method parseMethod(String name) {

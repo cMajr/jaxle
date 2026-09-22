@@ -120,6 +120,8 @@ public class Server {
                 }
 
                 Method method = parseMethod(parts[0]);
+                // Must stay above dispatch(...); otherwise this line is skipped when
+                // a HEAD handler throws, and the 500 from the catch goes out with a body.
                 headRequest = method == Method.HEAD;
                 String target = parts[1];
                 response = method == null ? errorResponse(501) : dispatch(method, target, headers, body);
@@ -167,18 +169,27 @@ public class Server {
 
         Handler handler = route.handlers().get(method);
 
+        // "The HEAD method is identical to GET except that the server MUST NOT
+        // send content in the response." (RFC 9110 9.3.2)
+        // The GET handler is used only when no HEAD handler is registered.
         if (handler == null && method == Method.HEAD) {
             handler = route.handlers().get(Method.GET);
         }
 
+        // The server answers OPTIONS itself only when no OPTIONS handler is registered.
         if (handler == null && method == Method.OPTIONS) {
             return Response.noContent().withHeader("allow", allowedMethods(route));
         }
 
+        // "The origin server MUST generate an Allow header field in a 405
+        // response containing a list of the target resource's currently
+        // supported methods." (RFC 9110 15.5.6)
         if (handler == null) {
             return errorResponse(405).withHeader("allow", allowedMethods(route));
         }
 
+        // The query is parsed only once a handler is found, because a bad query
+        // like ?q=%zz would otherwise turn a 404 or 405 into a 400.
         Map<String, String> queryParams = parseQuery(rawQuery(target));
         Request request = new Request(method, path, headers, body, route.params(), queryParams);
         var response = handler.handle(request);
@@ -192,6 +203,9 @@ public class Server {
 
     void writeResponse(OutputStream out, Response response, boolean headRequest) throws IOException {
         int status = response.status();
+        // A 204 or 304 response "cannot contain content" (RFC 9110 15.3.5, 15.4.5).
+        // Neither gets content-length either. It is forbidden on 204 (8.6), and on
+        // 304 it would have to match a 200 response the server never built.
         boolean statusAllowsBody = status != 204 && status != 304;
 
         StringBuilder stringBuilder = new StringBuilder();
@@ -270,8 +284,10 @@ public class Server {
 
     private static String allowedMethods(RouteMatch route) {
         var allowed = EnumSet.copyOf(route.handlers().keySet());
+        // The server answers OPTIONS on every path, with or without a handler.
         allowed.add(Method.OPTIONS);
 
+        // Every path with GET also answers HEAD through the GET handler.
         if (allowed.contains(Method.GET)) {
             allowed.add(Method.HEAD);
         }

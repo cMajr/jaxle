@@ -96,68 +96,56 @@ public class Server {
     }
 
     private void handleConnection(Socket client) {
-        Method method = null;
         try {
-            client.setSoTimeout(READ_TIMEOUT_MS);
-            var in = new BufferedInputStream(client.getInputStream());
-            var out = client.getOutputStream();
-            String requestLine = readLine(in, 414);
-
-            // Client closed the connection without sending any data.
-            if (requestLine == null) {
-                return;
-            }
-
-            var headers = readHeaders(in);
-            byte[] body = readBody(in, headers);
-            // For example "GET /api/orders/1043/items?limit=20&offset=40 HTTP/1.1"
-            // gives method, target and version.
-            String[] parts = requestLine.split(" ");
-
-            if (parts.length != 3) {
-                throw new HttpException(400, "malformed request line");
-            }
-
+            Method method = null;
+            Response response;
             try {
-                method = Method.valueOf(parts[0]);
-            } catch (IllegalArgumentException e) {
-                writeResponse(out, errorResponse(501), method);
-                return;
-            }
+                client.setSoTimeout(READ_TIMEOUT_MS);
+                var in = new BufferedInputStream(client.getInputStream());
+                String requestLine = readLine(in, 414);
 
-            String target = parts[1];
-            writeResponse(out, dispatch(method, target, headers, body), method);
-        } catch (HttpException e) {
-            String message;
-            if (e.status() >= 500) {
+                // Client closed the connection without sending any data.
+                if (requestLine == null) {
+                    return;
+                }
+
+                var headers = readHeaders(in);
+                byte[] body = readBody(in, headers);
+                // For example "GET /api/orders/1043/items?limit=20&offset=40 HTTP/1.1"
+                // gives method, target and version.
+                String[] parts = requestLine.split(" ");
+
+                if (parts.length != 3) {
+                    throw new HttpException(400, "malformed request line");
+                }
+
+                method = parseMethod(parts[0]);
+                String target = parts[1];
+                response = method == null ? errorResponse(501) : dispatch(method, target, headers, body);
+            } catch (HttpException e) {
+                String message;
+                if (e.status() >= 500) {
+                    log.log(ERROR, "Request failed", e);
+                    message = reasonPhrase(e.status());
+                } else {
+                    log.log(DEBUG, e.getMessage());
+                    message = e.getMessage();
+                }
+
+                response = Response.text(e.status(), message);
+            } catch (SocketTimeoutException e) {
+                log.log(DEBUG, "Request timeout");
+                response = errorResponse(408);
+            } catch (Throwable e) {
                 log.log(ERROR, "Request failed", e);
-                message = reasonPhrase(e.status());
-            } else {
-                log.log(DEBUG, e.getMessage());
-                message = e.getMessage();
+                response = errorResponse(500);
             }
 
             try {
                 var out = client.getOutputStream();
-                writeResponse(out, Response.text(e.status(), message), method);
-            } catch (Exception suppressed) {
-                // Connection is already broken.
-            }
-        } catch (SocketTimeoutException e) {
-            log.log(DEBUG, "Request timeout");
-            try {
-                var out = client.getOutputStream();
-                writeResponse(out, errorResponse(408), method);
-            } catch (Exception suppressed) {
-                // Connection is already broken.
-            }
-        } catch (Throwable e) {
-            log.log(ERROR, "Request failed", e);
-            try {
-                var out = client.getOutputStream();
-                writeResponse(out, errorResponse(500), method);
-            } catch (Exception suppressed) {
-                // Connection is already broken, the real cause is logged above.
+                writeResponse(out, response, method);
+            } catch (IOException e) {
+                // Client went away before the response was written.
             }
         } finally {
             try {
@@ -192,7 +180,13 @@ public class Server {
 
         Map<String, String> queryParams = parseQuery(rawQuery(target));
         Request request = new Request(method, path, headers, body, route.params(), queryParams);
-        return handler.handle(request);
+        var response = handler.handle(request);
+
+        if (response == null) {
+            throw new IllegalStateException("handler returned null for " + path);
+        }
+
+        return response;
     }
 
     void writeResponse(OutputStream out, Response response, Method method) throws IOException {
@@ -226,6 +220,14 @@ public class Server {
 
         if (hasBody && method != Method.HEAD) {
             out.write(body);
+        }
+    }
+
+    private static Method parseMethod(String name) {
+        try {
+            return Method.valueOf(name);
+        } catch (IllegalArgumentException e) {
+            return null;
         }
     }
 

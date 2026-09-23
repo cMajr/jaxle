@@ -2,7 +2,6 @@ package example;
 
 import jaxle.Request;
 import jaxle.Response;
-import jaxle.Server;
 
 import static jaxle.Response.badRequest;
 import static jaxle.Response.conflict;
@@ -19,11 +18,6 @@ import java.util.Map;
 public class Users {
     private final Map<Integer, String> users = new HashMap<>();
     private int nextId = 0;
-
-    void addRoutes(Server server) {
-        server.post("/register", this::register);
-        server.get("/users/{id}", this::findById);
-    }
 
     synchronized Response register(Request request) {
         String username = request.text().strip();

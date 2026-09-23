@@ -8,7 +8,8 @@ public class Main {
 
         var users = new Users();
 
-        users.addRoutes(server);
+        server.post("/register", users::register);
+        server.get("/users/{id}", users::findById);
 
         server.start();
     }

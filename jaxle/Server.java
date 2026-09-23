@@ -110,18 +110,22 @@ public class Server {
                     return;
                 }
 
-                Map<String, String> headers = readHeaders(in);
-                byte[] body = readBody(in, headers);
+                // Validate the request line before processing headers.
                 // For example "GET /api/orders/1043/items?limit=20&offset=40 HTTP/1.1"
                 // gives method, target and version.
                 String[] parts = splitRequestLine(requestLine);
-
+                Method method = parseMethod(parts[0]);
                 Version version = parseVersion(parts[2]);
                 String target = parts[1];
-                Method method = parseMethod(parts[0]);
-                // Must stay above dispatch(...); otherwise this line is skipped when
-                // a HEAD handler throws, and the 500 from the catch goes out with a body.
+
+                // If a HEAD request arrives and the handler or the parsing methods throw
+                // an exception, the server must respond with an error without a body.
+                // But if this line is placed after the request parsing, handleConnection
+                // will jump straight to catch, skipping the lines below, and the HEAD
+                // request error will be sent with a body.
                 headRequest = method == Method.HEAD;
+                Map<String, String> headers = readHeaders(in);
+                byte[] body = readBody(in, headers);
 
                 if (version.major() != 1) {
                     response = Response.text(505, "only HTTP/1.x is supported");

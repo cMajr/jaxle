@@ -257,6 +257,17 @@ public class Server {
             throw new HttpException(400, "malformed request line");
         }
 
+        // The target may hold only visible ASCII because the URI
+        // grammar requires anything else to be percent-encoded
+        String target = parts[1];
+        for (int i = 0; i < target.length(); i++) {
+            char c = target.charAt(i);
+            boolean allowed = c >= 0x21 && c <= 0x7E;
+            if (!allowed) {
+                throw new HttpException(400, "invalid character in request target");
+            }
+        }
+
         for (String part : parts) {
             if (part.isEmpty()) {
                 throw new HttpException(400, "malformed request line");

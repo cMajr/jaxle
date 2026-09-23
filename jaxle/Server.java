@@ -560,9 +560,12 @@ public class Server {
             if (b == -1) {
                 if (buf.size() == 0) {
                     return null;
-                } else {
-                    break;
                 }
+
+                // EOF in the middle of a line means an incomplete request.
+                // If a client sent an incomplete request,
+                // the server may respond with an error (RFC 9112, 8).
+                throw new HttpException(400, "incomplete line");
             }
 
             if (buf.size() >= MAX_LINE_BYTES) {

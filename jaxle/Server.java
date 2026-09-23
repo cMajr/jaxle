@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
@@ -47,9 +48,9 @@ public class Server {
      *
      * <p>Same as {@link #Server(int) Server(8080)}.
      *
-     * @throws IOException if the port cannot be bound
+     * @throws UncheckedIOException if the port cannot be bound
      */
-    public Server() throws IOException {
+    public Server() {
         this(8080);
     }
 
@@ -60,11 +61,15 @@ public class Server {
      * {@link #port()} returns.
      *
      * @param port the port to listen on
-     * @throws IOException if the port cannot be bound
+     * @throws UncheckedIOException if the port cannot be bound
      * @throws IllegalArgumentException if the port is outside 0 to 65535
      */
-    public Server(int port) throws IOException {
-        this.socket = new ServerSocket(port);
+    public Server(int port) {
+        try {
+            this.socket = new ServerSocket(port);
+        } catch (IOException e) {
+            throw new UncheckedIOException("cannot bind port " + port, e);
+        }
     }
 
     /**
@@ -82,17 +87,21 @@ public class Server {
      * carries a single request. Note that handlers may run concurrently,
      * including one handler serving several requests at once.
      *
-     * @throws IOException if accepting a connection fails
+     * @throws UncheckedIOException if accepting a connection fails
      * @throws IllegalStateException if the server has already been started
      */
-    public void start() throws IOException {
+    public void start() {
         if (!started.compareAndSet(false, true)) {
             throw new IllegalStateException("server already started");
         }
 
-        while (true) {
-            Socket client = socket.accept();
-            Thread.ofVirtual().start(() -> handleConnection(client));
+        try {
+            while (true) {
+                Socket client = socket.accept();
+                Thread.ofVirtual().start(() -> handleConnection(client));
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 

@@ -1,11 +1,9 @@
 package example;
 
-import java.io.IOException;
-
 import jaxle.Server;
 
 public class Main {
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         Server server = new Server(8081);
 
         var users = new Users();

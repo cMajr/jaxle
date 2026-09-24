@@ -1,5 +1,7 @@
 package jaxle;
 
+import static jaxle.Response.checkStatus;
+
 import java.util.Objects;
 
 /**
@@ -30,11 +32,11 @@ public class HttpException extends RuntimeException {
      *
      * @param status the status code of the response
      * @param message the detail message
+     * @throws IllegalArgumentException if the status is outside 200..599
      * @throws NullPointerException if the message is null
      */
     public HttpException(int status, String message) {
-        super(Objects.requireNonNull(message, "message"));
-        this.status = status;
+        this(status, message, null);
     }
 
     /**
@@ -45,11 +47,12 @@ public class HttpException extends RuntimeException {
      * @param message the detail message
      * @param cause the exception that caused this one, or {@code null} if
      *        the cause is unknown
+     * @throws IllegalArgumentException if the status is outside 200..599
      * @throws NullPointerException if the message is null
      */
     public HttpException(int status, String message, Throwable cause) {
         super(Objects.requireNonNull(message, "message"), cause);
-        this.status = status;
+        this.status = checkStatus(status);
     }
 
     /**

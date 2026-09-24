@@ -37,11 +37,13 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
      * @param status the status code
      * @param headers the response headers, with names in any case
      * @param body the raw body bytes
-     * @throws IllegalArgumentException if a name or a value breaks the rules
-     *         above, if two names match ignoring case, or if a header
-     *         left to the server is given
+     * @throws IllegalArgumentException if the status is outside 200..599,
+     *         if a name or a value breaks the rules above, if two names
+     *         match ignoring case, or if a header left to the server is
+     *         given
      */
     public Response {
+        checkStatus(status);
         Map<String, String> lowercased = new HashMap<>();
 
         for (Map.Entry<String, String> header : headers.entrySet()) {
@@ -149,6 +151,7 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
      *
      * @param status the status code
      * @param content the JSON text
+     * @throws IllegalArgumentException if the status is outside 200..599
      */
     public static Response json(int status, String content) {
         Map<String, String> headers = Map.of("content-type", "application/json");
@@ -164,6 +167,7 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
      *
      * @param status the status code
      * @param content the body text
+     * @throws IllegalArgumentException if the status is outside 200..599
      */
     public static Response text(int status, String content) {
         Map<String, String> headers = Map.of("content-type", "text/plain; charset=utf-8");
@@ -246,5 +250,13 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
                 "invalid header value, character " + Integer.toHexString(value.charAt(invalidValueIndex))
                 + " at index " + invalidValueIndex);
         }
+    }
+
+    static int checkStatus(int status) {
+        if (status < 200 || status > 599) {
+            throw new IllegalArgumentException("status " + status + " out of range 200..599");
+        }
+
+        return status;
     }
 }

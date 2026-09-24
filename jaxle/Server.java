@@ -605,12 +605,13 @@ public class Server {
 
             if (patternPart.startsWith("{") && patternPart.endsWith("}")) {
                 String name = patternPart.substring(1, patternPart.length() - 1);
-                params.put(name, decode(pathPart.replace("+", "%2B")));
+                params.put(name, pathPart);
             } else if (!patternPart.equals(pathPart)) {
                 return null;
             }
         }
 
+        params.replaceAll((name, value) -> decode(value.replace("+", "%2B")));
         return params;
     }
 

@@ -689,20 +689,12 @@ public class Server {
 
     byte[] readBody(InputStream in, Map<String, String> headers) throws IOException {
         String contentLength = headers.get("content-length");
+
         if (contentLength == null) {
             return new byte[0];
         }
 
-        int length;
-        try {
-            length = Integer.parseInt(contentLength);
-        } catch (NumberFormatException e) {
-            throw new HttpException(400, "invalid content-length");
-        }
-
-        if (length < 0) {
-            throw new HttpException(400, "invalid content-length");
-        }
+        int length = parseContentLength(contentLength);
 
         if (length > MAX_BODY_BYTES) {
             throw new HttpException(413, "body exceeds " + MAX_BODY_BYTES + " bytes");
@@ -716,6 +708,25 @@ public class Server {
         }
 
         return payloadBytes;
+    }
+
+    private static int parseContentLength(String value) {
+        int length;
+
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (!isDigit(c)) {
+                throw new HttpException(400, "invalid content-length");
+            }
+        }
+
+        try {
+            length = Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            throw new HttpException(400, "invalid content-length");
+        }
+
+        return length;
     }
 
     private static boolean hasControlCharacter(String value) {

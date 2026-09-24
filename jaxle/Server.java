@@ -134,6 +134,7 @@ public class Server {
                 // request error will be sent with a body.
                 headRequest = method == Method.HEAD;
                 Map<String, String> headers = readHeaders(in);
+                rejectTransferEncoding(headers);
                 byte[] body = readBody(in, headers);
 
                 if (version.major() != 1) {
@@ -685,6 +686,16 @@ public class Server {
         }
 
         return headers;
+    }
+
+    private static void rejectTransferEncoding(Map<String, String> headers) {
+        if (headers.containsKey("content-length") && headers.containsKey("transfer-encoding")) {
+            throw new HttpException(400, "both content-length and transfer-encoding");
+        }
+
+        if (headers.containsKey("transfer-encoding")) {
+            throw new HttpException(501, "transfer-encoding not supported");
+        }
     }
 
     byte[] readBody(InputStream in, Map<String, String> headers) throws IOException {

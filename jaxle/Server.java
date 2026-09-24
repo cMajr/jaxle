@@ -125,7 +125,7 @@ public class Server {
                 String[] parts = splitRequestLine(requestLine);
                 Method method = parseMethod(parts[0]);
                 Version version = parseVersion(parts[2]);
-                String target = parts[1];
+                String target = toOriginForm(parts[1]);
 
                 // If a HEAD request arrives and the handler or the parsing methods throw
                 // an exception, the server must respond with an error without a body.
@@ -299,6 +299,47 @@ public class Server {
         int minor = version.charAt(7) - '0';
 
         return new Version(major, minor);
+    }
+
+    // A client talking to a proxy puts the whole URI in the request line
+    // (RFC 9112 3.2.2), as in "GET http://example.org/users/1 HTTP/1.1".
+    // The server accepts this form as well and keeps only the path and query.
+    private static String toOriginForm(String target) {
+        if (target.startsWith("/") || target.equals("*")) {
+            return target;
+        }
+
+        int authorityStart;
+        if (target.regionMatches(true, 0, "http://", 0, 7)) {
+            authorityStart = 7;
+        } else if (target.regionMatches(true, 0, "https://", 0, 8)) {
+            authorityStart = 8;
+        } else {
+            throw new HttpException(400, "invalid request target");
+        }
+
+        int end = target.length();
+        for (int i = authorityStart; i < target.length(); i++) {
+            char c = target.charAt(i);
+
+            if (c == '/' || c == '?') {
+                end = i;
+                break;
+            }
+        }
+
+        // RFC 9110 4.2.1 requires rejecting an http URI with an empty host.
+        if (end == authorityStart) {
+            throw new HttpException(400, "invalid request target");
+        }
+
+        String rest = target.substring(end);
+
+        if (!rest.startsWith("/")) {
+            return "/" + rest;
+        }
+
+        return rest;
     }
 
     private static boolean isDigit(char c) {

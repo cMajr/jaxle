@@ -71,7 +71,7 @@ public record Request(
         try {
             return new String(body, charset);
         } catch (UnsupportedEncodingException e) {
-            throw new HttpException(415, "unsupported charset " + charset);
+            throw new HttpException(415, "unsupported charset " + charset, e);
         }
     }
 
@@ -114,7 +114,7 @@ public record Request(
         try {
             return converter.apply(value);
         } catch (RuntimeException e) {
-            throw new HttpException(400, "bad path parameter " + name);
+            throw new HttpException(400, "bad path parameter " + name, e);
         }
     }
 

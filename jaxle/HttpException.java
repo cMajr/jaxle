@@ -38,6 +38,21 @@ public class HttpException extends RuntimeException {
     }
 
     /**
+     * Creates an exception that ends the request with the given status and
+     * records the exception that caused it.
+     *
+     * @param status the status code of the response
+     * @param message the detail message
+     * @param cause the exception that caused this one, or {@code null} if
+     *        the cause is unknown
+     * @throws NullPointerException if the message is null
+     */
+    public HttpException(int status, String message, Throwable cause) {
+        super(Objects.requireNonNull(message, "message"), cause);
+        this.status = status;
+    }
+
+    /**
      * {@return the status code of the response}
      */
     public int status() {

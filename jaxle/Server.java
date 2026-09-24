@@ -558,7 +558,7 @@ public class Server {
         try {
             return URLDecoder.decode(value, StandardCharsets.UTF_8);
         } catch (IllegalArgumentException e) {
-            throw new HttpException(400, "invalid percent-encoding");
+            throw new HttpException(400, "invalid percent-encoding", e);
         }
     }
 
@@ -735,7 +735,7 @@ public class Server {
         try {
             length = Integer.parseInt(value);
         } catch (NumberFormatException e) {
-            throw new HttpException(400, "invalid content-length");
+            throw new HttpException(400, "invalid content-length", e);
         }
 
         return length;

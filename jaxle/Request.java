@@ -2,8 +2,10 @@ package jaxle;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 
 public record Request(
@@ -137,5 +139,28 @@ public record Request(
      */
     public String query(String name) {
         return queryParams.get(name);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof Request other
+            && this.method == other.method
+            && this.path.equals(other.path)
+            && this.headers.equals(other.headers)
+            && Arrays.equals(this.body, other.body)
+            && this.params.equals(other.params)
+            && this.queryParams.equals(other.queryParams);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(method, path, headers, Arrays.hashCode(body), params, queryParams);
+    }
+
+    @Override
+    public String toString() {
+        return "Request[method=" + method + ", path=" + path + ", headers=" + headers
+            + ", body=" + body.length + " bytes, params=" + params
+            + ", queryParams=" + queryParams + "]";
     }
 }

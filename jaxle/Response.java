@@ -1,10 +1,12 @@
 package jaxle;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public record Response(int status, Map<String, String> headers, byte[] body) {
@@ -59,6 +61,27 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
 
         headers = Map.copyOf(lowercased);
         body = body.clone();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof Response other) {
+            return this.status == other.status
+                && this.headers.equals(other.headers)
+                && Arrays.equals(this.body, other.body);
+        }
+
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(status, headers, Arrays.hashCode(body));
+    }
+
+    @Override
+    public String toString() {
+        return "Response[status=" + status + ", headers=" + headers + ", body=" + body.length + " bytes]";
     }
 
     /**

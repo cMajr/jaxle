@@ -17,7 +17,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static java.lang.System.Logger.Level.DEBUG;
@@ -34,7 +33,8 @@ public class Server {
 
     private final ServerSocket socket;
 
-    private final AtomicBoolean started = new AtomicBoolean();
+    private final Object lock = new Object();
+    private boolean started = false;
 
     // Path is resolved first to distinguish 404 from 405.
     // When several patterns match, the first registered one wins.
@@ -91,8 +91,12 @@ public class Server {
      * @throws IllegalStateException if the server has already been started
      */
     public void start() {
-        if (!started.compareAndSet(false, true)) {
-            throw new IllegalStateException("server already started");
+        synchronized (lock) {
+            if (started) {
+                throw new IllegalStateException("server already started");
+            }
+
+            started = true;
         }
 
         try {
@@ -434,21 +438,23 @@ public class Server {
      * @throws IllegalStateException if the server has already been started
      */
     public void addRoute(Method method, String path, Handler handler) {
-        if (started.get()) {
-            throw new IllegalStateException("cannot add routes after start()");
+        synchronized (lock) {
+            if (started) {
+                throw new IllegalStateException("cannot add routes after start()");
+            }
+
+            String normalizedPath = normalizePath(path);
+            Map<Method, Handler> inner = this.routes.get(normalizedPath);
+
+            if (inner == null) {
+                inner = new EnumMap<>(Method.class);
+                // First method for this path.
+                this.routes.put(normalizedPath, inner);
+            }
+
+            // Map from routes is modified in place.
+            inner.put(method, handler);
         }
-
-        String normalizedPath = normalizePath(path);
-        Map<Method, Handler> inner = this.routes.get(normalizedPath);
-
-        if (inner == null) {
-            inner = new EnumMap<>(Method.class);
-            // First method for this path.
-            this.routes.put(normalizedPath, inner);
-        }
-
-        // Map from routes is modified in place.
-        inner.put(method, handler);
     }
 
     /**

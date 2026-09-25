@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 import static java.lang.System.Logger.Level.DEBUG;
@@ -25,6 +26,7 @@ import static jaxle.Response.invalidNameIndex;
 
 public class Server implements AutoCloseable {
     private static final int READ_TIMEOUT_MS = 20_000;
+    private static final int MAX_CONNECTIONS = 500;
     private static final int MAX_BODY_BYTES = 500 * 1024;
     private static final int MAX_LINE_BYTES = 8 * 1024;
     private static final int MAX_HEADERS = 100;
@@ -32,6 +34,8 @@ public class Server implements AutoCloseable {
     private static final System.Logger log = System.getLogger("jaxle.Server");
 
     private final ServerSocket socket;
+
+    private final Semaphore connections = new Semaphore(MAX_CONNECTIONS);
 
     private final Object lock = new Object();
     private boolean started = false;
@@ -106,7 +110,12 @@ public class Server implements AutoCloseable {
         try {
             while (true) {
                 Socket client = socket.accept();
-                Thread.ofVirtual().start(() -> handleConnection(client));
+
+                if (connections.tryAcquire()) {
+                    Thread.ofVirtual().start(() -> handleConnection(client));
+                } else {
+                    reject(client);
+                }
             }
         } catch (IOException e) {
             synchronized (lock) {
@@ -137,6 +146,20 @@ public class Server implements AutoCloseable {
             this.socket.close();
         } catch (IOException e) {
             throw new UncheckedIOException("cannot close port " + port(), e);
+        }
+    }
+
+    private void reject(Socket client) {
+        try {
+            writeResponse(client.getOutputStream(), errorResponse(503), false);
+        } catch (IOException e) {
+            // nothing to do
+        } finally {
+            try {
+                client.close();
+            } catch (IOException e) {
+                // nothing to do
+            }
         }
     }
 
@@ -212,6 +235,8 @@ public class Server implements AutoCloseable {
             } catch (IOException e) {
                 // nothing to do
             }
+
+            connections.release();
         }
     }
 

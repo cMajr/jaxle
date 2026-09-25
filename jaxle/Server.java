@@ -29,6 +29,7 @@ public class Server implements AutoCloseable {
     private static final int MAX_CONNECTIONS = 500;
     private static final int MAX_BODY_BYTES = 500 * 1024;
     private static final int MAX_LINE_BYTES = 8 * 1024;
+    private static final int MAX_HEADER_BYTES = 32 * 1024;
     private static final int MAX_HEADERS = 100;
 
     private static final System.Logger log = System.getLogger("jaxle.Server");
@@ -709,6 +710,7 @@ public class Server implements AutoCloseable {
     Map<String, String> readHeaders(InputStream in) throws IOException {
         Map<String, String> headers = new HashMap<>();
         int headerCount = 0;
+        int headerBytes = 0;
 
         while (true) {
             String headerLine = readLine(in, 431);
@@ -738,6 +740,11 @@ public class Server implements AutoCloseable {
             headerCount++;
             if (headerCount > MAX_HEADERS) {
                 throw new HttpException(431, "more than " + MAX_HEADERS + " headers");
+            }
+
+            headerBytes = headerBytes + headerLine.length();
+            if (headerBytes > MAX_HEADER_BYTES) {
+                throw new HttpException(431, "headers exceed " + MAX_HEADER_BYTES + " bytes");
             }
 
             if (headers.containsKey(name) && (name.equals("content-length") || name.equals("host"))) {

@@ -25,7 +25,7 @@ import static java.lang.System.Logger.Level.ERROR;
 import static jaxle.Response.invalidNameIndex;
 
 public class Server implements AutoCloseable {
-    private static final int READ_TIMEOUT_MS = 20_000;
+    private static final int REQUEST_TIMEOUT_MS = 30_000;
     private static final int MAX_CONNECTIONS = 500;
     private static final int MAX_BODY_BYTES = 500 * 1024;
     private static final int MAX_LINE_BYTES = 8 * 1024;
@@ -168,8 +168,7 @@ public class Server implements AutoCloseable {
             boolean headRequest = false;
             Response response;
             try {
-                client.setSoTimeout(READ_TIMEOUT_MS);
-                var in = new BufferedInputStream(client.getInputStream());
+                var in = new BufferedInputStream(new DeadlineInputStream(client, REQUEST_TIMEOUT_MS));
                 String requestLine = readLine(in, 414);
 
                 // Client closed the connection without sending any data.

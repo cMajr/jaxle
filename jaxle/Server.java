@@ -23,7 +23,7 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static jaxle.Response.invalidNameIndex;
 
-public class Server {
+public class Server implements AutoCloseable {
     private static final int READ_TIMEOUT_MS = 20_000;
     private static final int MAX_BODY_BYTES = 500 * 1024;
     private static final int MAX_LINE_BYTES = 8 * 1024;
@@ -35,6 +35,7 @@ public class Server {
 
     private final Object lock = new Object();
     private boolean started = false;
+    private boolean closed = false;
 
     // Path is resolved first to distinguish 404 from 405.
     // When several patterns match, the first registered one wins.
@@ -80,14 +81,17 @@ public class Server {
     }
 
     /**
-     * Accepts and handles connections, blocking the calling thread.
+     * Accepts and handles connections, blocking the calling thread until
+     * the server is closed.
      *
-     * <p>This method never returns normally and ends only by throwing an
-     * exception. Each connection is served in its own virtual thread and
-     * carries a single request. Note that handlers may run concurrently,
-     * including one handler serving several requests at once.
+     * <p>This method returns once {@link #close()} is called from another
+     * thread, or right away if the server was closed before it started.
+     * Each connection is served in its own virtual thread and carries a
+     * single request. Note that handlers may run concurrently, including
+     * one handler serving several requests at once.
      *
-     * @throws UncheckedIOException if accepting a connection fails
+     * @throws UncheckedIOException if accepting a connection fails for a
+     *         reason other than {@link #close()}
      * @throws IllegalStateException if the server has already been started
      */
     public void start() {
@@ -105,7 +109,34 @@ public class Server {
                 Thread.ofVirtual().start(() -> handleConnection(client));
             }
         } catch (IOException e) {
+            synchronized (lock) {
+                if (closed) {
+                    return;
+                }
+            }
             throw new UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * Stops accepting connections and releases the port.
+     *
+     * <p>A thread blocked in {@link #start()} returns normally. Requests
+     * already accepted are still served to the end in their own threads
+     * without this method waiting for them. Closing an already closed
+     * server has no effect.
+     *
+     * @throws UncheckedIOException if the port cannot be released
+     */
+    @Override
+    public void close() {
+        try {
+            synchronized (lock) {
+                closed = true;
+            }
+            this.socket.close();
+        } catch (IOException e) {
+            throw new UncheckedIOException("cannot close port " + port(), e);
         }
     }
 

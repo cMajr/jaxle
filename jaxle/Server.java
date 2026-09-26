@@ -9,22 +9,19 @@ import java.io.UncheckedIOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
-import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.EnumMap;
-import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
-import java.util.stream.Collectors;
 
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static jaxle.Response.invalidNameIndex;
 
 public class Server implements AutoCloseable {
+    private static final System.Logger log = System.getLogger("jaxle.Server");
+
     private static final int REQUEST_TIMEOUT_MS = 30_000;
     private static final int MAX_CONNECTIONS = 500;
     private static final int MAX_BODY_BYTES = 500 * 1024;
@@ -32,22 +29,15 @@ public class Server implements AutoCloseable {
     private static final int MAX_HEADER_BYTES = 32 * 1024;
     private static final int MAX_HEADERS = 100;
 
-    private static final System.Logger log = System.getLogger("jaxle.Server");
-
     private final ServerSocket socket;
-
     private final Semaphore connections = new Semaphore(MAX_CONNECTIONS);
-
     private final Object lock = new Object();
     private boolean started = false;
     private boolean closed = false;
 
-    // Path is resolved first to distinguish 404 from 405.
-    // When several patterns match, the first registered one wins.
-    private final Map<String, Map<Method, Handler>> routes = new LinkedHashMap<>();
-
-    private record RouteMatch(Map<Method, Handler> handlers, Map<String, String> params) {}
     private record Version(int major, int minor) {}
+
+    private final Router router = new Router();
 
     /**
      * Creates a server bound to port 8080.
@@ -242,7 +232,7 @@ public class Server implements AutoCloseable {
 
     private Response dispatch(Method method, String target, Map<String, String> headers, byte[] body) {
         String path = stripQuery(target);
-        RouteMatch route = findRoute(path);
+        Router.Match route = router.findRoute(path);
 
         if (route == null) {
             return errorResponse(404);
@@ -259,14 +249,14 @@ public class Server implements AutoCloseable {
 
         // The server answers OPTIONS itself only when no OPTIONS handler is registered.
         if (handler == null && method == Method.OPTIONS) {
-            return Response.noContent().withHeader("allow", allowedMethods(route));
+            return Response.noContent().withHeader("allow", Router.allowedMethods(route));
         }
 
         // "The origin server MUST generate an Allow header field in a 405
         // response containing a list of the target resource's currently
         // supported methods." (RFC 9110 15.5.6)
         if (handler == null) {
-            return errorResponse(405).withHeader("allow", allowedMethods(route));
+            return errorResponse(405).withHeader("allow", Router.allowedMethods(route));
         }
 
         // The query is parsed only once a handler is found, because a bad query
@@ -450,22 +440,6 @@ public class Server implements AutoCloseable {
         };
     }
 
-    private static String allowedMethods(RouteMatch route) {
-        var allowed = EnumSet.copyOf(route.handlers().keySet());
-        // The server answers OPTIONS on every path, with or without a handler.
-        allowed.add(Method.OPTIONS);
-
-        // Every path with GET also answers HEAD through the GET handler.
-        if (allowed.contains(Method.GET)) {
-            allowed.add(Method.HEAD);
-        }
-
-        return allowed
-            .stream()
-            .map(Method::name)
-            .collect(Collectors.joining(", "));
-    }
-
     /**
      * Registers a handler for requests with the given method and path.
      *
@@ -499,17 +473,7 @@ public class Server implements AutoCloseable {
                 throw new IllegalStateException("cannot add routes after start()");
             }
 
-            String normalizedPath = normalizePath(path);
-            Map<Method, Handler> inner = this.routes.get(normalizedPath);
-
-            if (inner == null) {
-                inner = new EnumMap<>(Method.class);
-                // First method for this path.
-                this.routes.put(normalizedPath, inner);
-            }
-
-            // Map from routes is modified in place.
-            inner.put(method, handler);
+            router.add(method, path, handler);
         }
     }
 
@@ -606,75 +570,14 @@ public class Server implements AutoCloseable {
             }
 
             String[] pairParts = pair.split("=", 2);
-            String name = decode(pairParts[0]);
-            String value = pairParts.length >= 2 ? decode(pairParts[1]) : "";
+            String name = PercentEncoding.decode(pairParts[0]);
+            String value = pairParts.length >= 2 ? PercentEncoding.decode(pairParts[1]) : "";
 
             // A repeated name keeps its first value.
             queryParams.putIfAbsent(name, value);
         }
 
         return queryParams;
-    }
-
-    private static String decode(String value) {
-        try {
-            return URLDecoder.decode(value, StandardCharsets.UTF_8);
-        } catch (IllegalArgumentException e) {
-            throw new HttpException(400, "invalid percent-encoding", e);
-        }
-    }
-
-    RouteMatch findRoute(String path) {
-        var normalizedPath = normalizePath(path);
-
-        var inner = routes.get(normalizedPath);
-
-        if (inner != null) {
-            return new RouteMatch(inner, Map.of());
-        }
-
-        for (Map.Entry<String, Map<Method, Handler>> route : routes.entrySet()) {
-            var params = matchPath(route.getKey(), normalizedPath);
-            if (params != null) {
-                return new RouteMatch(route.getValue(), params);
-            }
-        }
-
-        return null;
-    }
-
-    private static String normalizePath(String path) {
-        if (path.endsWith("/") && !path.equals("/")) {
-            return path.substring(0, path.length() - 1);
-        }
-
-        return path;
-    }
-
-    Map<String, String> matchPath(String pattern, String path) {
-        String[] patternParts = pattern.split("/");
-        String[] pathParts = path.split("/");
-
-        if (patternParts.length != pathParts.length) {
-            return null;
-        }
-
-        Map<String, String> params = new HashMap<>();
-
-        for (int i = 0; i < patternParts.length; i++) {
-            String patternPart = patternParts[i];
-            String pathPart = pathParts[i];
-
-            if (patternPart.startsWith("{") && patternPart.endsWith("}")) {
-                String name = patternPart.substring(1, patternPart.length() - 1);
-                params.put(name, pathPart);
-            } else if (!patternPart.equals(pathPart)) {
-                return null;
-            }
-        }
-
-        params.replaceAll((name, value) -> decode(value.replace("+", "%2B")));
-        return params;
     }
 
     String readLine(InputStream in, int tooLongStatus) throws IOException {

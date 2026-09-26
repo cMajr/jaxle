@@ -17,6 +17,7 @@ public class Server implements AutoCloseable {
 
     private static final int REQUEST_TIMEOUT_MS = 30_000;
     private static final int MAX_CONNECTIONS = 500;
+    private static final int ACCEPT_RETRY_DELAY_MS = 600;
 
     private final ServerSocket socket;
     private final Semaphore connections = new Semaphore(MAX_CONNECTIONS);
@@ -68,12 +69,16 @@ public class Server implements AutoCloseable {
      *
      * <p>This method returns once {@link #close()} is called from another
      * thread, or right away if the server was closed before it started.
+     * When accepting a connection fails for any other reason, the error is
+     * logged and the server tries again after a short pause. If the
+     * calling thread is interrupted during that pause, the server is
+     * closed and this method returns with the interrupt status set.
      * Each connection is served in its own virtual thread and carries a
      * single request. Note that handlers may run concurrently, including
      * one handler serving several requests at once.
      *
-     * @throws UncheckedIOException if accepting a connection fails for a
-     *         reason other than {@link #close()}
+     * @throws UncheckedIOException if the port cannot be released after
+     *         the calling thread is interrupted
      * @throws IllegalStateException if the server has already been started
      */
     public void start() {
@@ -85,23 +90,34 @@ public class Server implements AutoCloseable {
             started = true;
         }
 
-        try {
-            while (true) {
-                Socket client = socket.accept();
-
-                if (connections.tryAcquire()) {
-                    Thread.ofVirtual().start(() -> handleConnection(client));
-                } else {
-                    reject(client);
+        while (true) {
+            Socket client;
+            try {
+                client = socket.accept();
+            } catch (IOException e) {
+                synchronized (lock) {
+                    if (closed) {
+                        return;
+                    }
                 }
-            }
-        } catch (IOException e) {
-            synchronized (lock) {
-                if (closed) {
+
+                log.log(ERROR, "Accept failed", e);
+                try {
+                    Thread.sleep(ACCEPT_RETRY_DELAY_MS);
+                } catch (InterruptedException i) {
+                    Thread.currentThread().interrupt();
+                    close();
                     return;
                 }
+
+                continue;
             }
-            throw new UncheckedIOException(e);
+
+            if (connections.tryAcquire()) {
+                Thread.ofVirtual().start(() -> handleConnection(client));
+            } else {
+                reject(client);
+            }
         }
     }
 

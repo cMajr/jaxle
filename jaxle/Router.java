@@ -4,6 +4,7 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -25,6 +26,25 @@ class Router {
 
         // Map from routes is modified in place.
         inner.put(method, handler);
+    }
+
+    Match findRoute(String path) {
+        String normalizedPath = normalizePath(path);
+        String decodedPath = decodePath(normalizedPath);
+        var inner = routes.get(decodedPath);
+
+        if (inner != null) {
+            return new Match(inner, Map.of());
+        }
+
+        for (Map.Entry<String, Map<Method, Handler>> route : routes.entrySet()) {
+            var params = matchPath(route.getKey(), decodedPath);
+            if (params != null) {
+                return new Match(route.getValue(), params);
+            }
+        }
+
+        return null;
     }
 
     private static Map<String, String> matchPath(String pattern, String path) {
@@ -49,27 +69,24 @@ class Router {
             }
         }
 
-        params.replaceAll((name, value) -> PercentEncoding.decode(value.replace("+", "%2B")));
         return params;
     }
 
-    Match findRoute(String path) {
-        var normalizedPath = normalizePath(path);
-
-        var inner = routes.get(normalizedPath);
-
-        if (inner != null) {
-            return new Match(inner, Map.of());
+    private static String decodePath(String path) {
+        if (path.toLowerCase(Locale.ROOT).contains("%2f")) {
+            throw new HttpException(400, "encoded slash in path");
         }
 
-        for (Map.Entry<String, Map<Method, Handler>> route : routes.entrySet()) {
-            var params = matchPath(route.getKey(), normalizedPath);
-            if (params != null) {
-                return new Match(route.getValue(), params);
-            }
+        // Without a -1 limit, split() turns a path like "/" into
+        // ["", ""] and starts discarding empty strings from the
+        // end. Then join("/", []) returns "" instead of "/".
+        // "//" is not merged into "/".
+        String[] parts = path.split("/", -1);
+        for (int i = 0; i < parts.length; i++) {
+            parts[i] = PercentEncoding.decode(parts[i].replace("+", "%2B"));
         }
 
-        return null;
+        return String.join("/", parts);
     }
 
     private static String normalizePath(String path) {

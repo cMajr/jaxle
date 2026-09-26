@@ -231,7 +231,7 @@ public class Server implements AutoCloseable {
     }
 
     private Response dispatch(Method method, String target, Map<String, String> headers, byte[] body) {
-        String path = stripQuery(target);
+        String path = QueryParser.stripQuery(target);
         Router.Match route = router.findRoute(path);
 
         if (route == null) {
@@ -261,7 +261,8 @@ public class Server implements AutoCloseable {
 
         // The query is parsed only once a handler is found, because a bad query
         // like ?q=%zz would otherwise turn a 404 or 405 into a 400.
-        Map<String, String> queryParams = parseQuery(rawQuery(target));
+        String rawQuery = QueryParser.rawQuery(target);
+        Map<String, String> queryParams = QueryParser.parseQuery(rawQuery);
         Request request = new Request(method, path, headers, body, route.params(), queryParams);
         var response = handler.handle(request);
 
@@ -540,44 +541,6 @@ public class Server implements AutoCloseable {
      */
     public void delete(String path, Handler handler) {
         addRoute(Method.DELETE, path, handler);
-    }
-
-    private static String stripQuery(String target) {
-        int queryStart = target.indexOf('?');
-        if (queryStart < 0) {
-            return target;
-        }
-
-        return target.substring(0, queryStart);
-    }
-
-    private static String rawQuery(String target) {
-        int queryStart = target.indexOf('?');
-        if (queryStart < 0) {
-            return "";
-        }
-
-        return target.substring(queryStart + 1);
-    }
-
-    private static Map<String, String> parseQuery(String query) {
-        Map<String, String> queryParams = new HashMap<>();
-        String[] pairs = query.split("&");
-
-        for (String pair : pairs) {
-            if (pair.isEmpty()) {
-                continue;
-            }
-
-            String[] pairParts = pair.split("=", 2);
-            String name = PercentEncoding.decode(pairParts[0]);
-            String value = pairParts.length >= 2 ? PercentEncoding.decode(pairParts[1]) : "";
-
-            // A repeated name keeps its first value.
-            queryParams.putIfAbsent(name, value);
-        }
-
-        return queryParams;
     }
 
     String readLine(InputStream in, int tooLongStatus) throws IOException {

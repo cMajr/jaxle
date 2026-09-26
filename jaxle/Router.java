@@ -11,33 +11,40 @@ import java.util.stream.Collectors;
 class Router {
     // Path is resolved first to distinguish 404 from 405.
     // When several patterns match, the first registered one wins.
-    private final Map<String, Map<Method, Handler>> routes = new LinkedHashMap<>();
+    private final Map<String, Map<Method, Handler>> staticRoutes = new HashMap<>();
+    private final Map<String, Map<Method, Handler>> patternRoutes = new LinkedHashMap<>();
     record Match(Map<Method, Handler> handlers, Map<String, String> params) {}
 
     void add(Method method, String path, Handler handler) {
         String normalizedPath = normalizePath(path);
-        Map<Method, Handler> inner = this.routes.get(normalizedPath);
+        Map<String, Map<Method, Handler>> routes;
+        if (normalizedPath.contains("{")) {
+            routes = patternRoutes;
+        } else {
+            routes = staticRoutes;
+        }
 
+        Map<Method, Handler> inner = routes.get(normalizedPath);
         if (inner == null) {
             inner = new EnumMap<>(Method.class);
             // First method for this path.
-            this.routes.put(normalizedPath, inner);
+            routes.put(normalizedPath, inner);
         }
 
-        // Map from routes is modified in place.
+        // Updates the map inside routes directly.
         inner.put(method, handler);
     }
 
     Match findRoute(String path) {
         String normalizedPath = normalizePath(path);
         String decodedPath = decodePath(normalizedPath);
-        var inner = routes.get(decodedPath);
+        var inner = staticRoutes.get(decodedPath);
 
         if (inner != null) {
             return new Match(inner, Map.of());
         }
 
-        for (Map.Entry<String, Map<Method, Handler>> route : routes.entrySet()) {
+        for (Map.Entry<String, Map<Method, Handler>> route : patternRoutes.entrySet()) {
             var params = matchPath(route.getKey(), decodedPath);
             if (params != null) {
                 return new Match(route.getValue(), params);

@@ -2,7 +2,6 @@ package jaxle;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -12,16 +11,6 @@ import java.util.Set;
 public record Response(int status, Map<String, String> headers, byte[] body) {
     private static final Set<String> SERVER_HEADERS =
         Set.of("content-length", "connection", "transfer-encoding");
-
-    private static final BitSet TOKEN = new BitSet(128);
-
-    static {
-        for (char c = 'a'; c <= 'z'; c++) TOKEN.set(c);
-        for (char c = 'A'; c <= 'Z'; c++) TOKEN.set(c);
-        for (char c = '0'; c <= '9'; c++) TOKEN.set(c);
-
-        for (char c : "!#$%&'*+-.^_`|~".toCharArray()) TOKEN.set(c);
-    }
 
     /**
      * Builds a response from the given status, headers and body.
@@ -213,17 +202,6 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
         return new Response(status, copy, this.body);
     }
 
-    static int invalidNameIndex(String name) {
-        for (int i = 0; i < name.length(); i++) {
-            char c = name.charAt(i);
-            if (!TOKEN.get(c)) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
     private static int invalidValueIndex(String value) {
         for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);
@@ -250,7 +228,7 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
             throw new IllegalArgumentException("empty header name");
         }
 
-        int invalidNameIndex = invalidNameIndex(name);
+        int invalidNameIndex = HttpTokens.indexOfInvalid(name);
         if (invalidNameIndex != -1) {
             throw new IllegalArgumentException(
                 "invalid header name, character " + Integer.toHexString(name.charAt(invalidNameIndex))

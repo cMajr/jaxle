@@ -4,7 +4,6 @@ import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -142,7 +141,7 @@ public class Server implements AutoCloseable {
 
     private void reject(Socket client) {
         try {
-            writeResponse(client.getOutputStream(), errorResponse(503), false);
+            ResponseWriter.write(client.getOutputStream(), errorResponse(503), false);
         } catch (IOException e) {
             // nothing to do
         } finally {
@@ -198,7 +197,7 @@ public class Server implements AutoCloseable {
                 String message;
                 if (e.status() >= 500) {
                     log.log(ERROR, "Request failed", e);
-                    message = reasonPhrase(e.status());
+                    message = ResponseWriter.reasonPhrase(e.status());
                 } else {
                     log.log(DEBUG, e.getMessage());
                     message = e.getMessage();
@@ -215,7 +214,7 @@ public class Server implements AutoCloseable {
 
             try {
                 var out = client.getOutputStream();
-                writeResponse(out, response, headRequest);
+                ResponseWriter.write(out, response, headRequest);
             } catch (IOException e) {
                 // Client went away before the response was written.
             }
@@ -271,44 +270,6 @@ public class Server implements AutoCloseable {
         }
 
         return response;
-    }
-
-    void writeResponse(OutputStream out, Response response, boolean headRequest) throws IOException {
-        int status = response.status();
-        // A 204 or 304 response "cannot contain content" (RFC 9110 15.3.5, 15.4.5).
-        // Neither gets content-length either. It is forbidden on 204 (8.6), and on
-        // 304 it would have to match a 200 response the server never built.
-        boolean statusAllowsBody = status != 204 && status != 304;
-
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder
-            .append("HTTP/1.1 ")
-            .append(status)
-            .append(" ")
-            .append(reasonPhrase(status))
-            .append("\r\n");
-
-        for (Map.Entry<String, String> header : response.headers().entrySet()) {
-            stringBuilder.append(header.getKey()).append(": ").append(header.getValue()).append("\r\n");
-        }
-
-        byte[] body = response.body();
-
-        // A response to HEAD keeps the content-length a GET would get (RFC 9110 8.6).
-        if (statusAllowsBody) {
-            stringBuilder.append("content-length: ").append(body.length).append("\r\n");
-        }
-
-        stringBuilder.append("connection: close").append("\r\n");
-
-        stringBuilder.append("\r\n");
-        String head = stringBuilder.toString();
-
-        out.write(head.getBytes(StandardCharsets.ISO_8859_1));
-
-        if (statusAllowsBody && !headRequest) {
-            out.write(body);
-        }
     }
 
     private static String[] splitRequestLine(String requestLine) {
@@ -407,38 +368,7 @@ public class Server implements AutoCloseable {
     }
 
     private static Response errorResponse(int status) {
-        return Response.text(status, reasonPhrase(status));
-    }
-
-    private static String reasonPhrase(int status) {
-        return switch (status) {
-            case 200 -> "OK";
-            case 201 -> "Created";
-            case 204 -> "No Content";
-            case 301 -> "Moved Permanently";
-            case 302 -> "Found";
-            case 304 -> "Not Modified";
-            case 400 -> "Bad Request";
-            case 401 -> "Unauthorized";
-            case 403 -> "Forbidden";
-            case 404 -> "Not Found";
-            case 405 -> "Method Not Allowed";
-            case 408 -> "Request Timeout";
-            case 409 -> "Conflict";
-            case 413 -> "Content Too Large";
-            case 414 -> "URI Too Long";
-            case 415 -> "Unsupported Media Type";
-            case 422 -> "Unprocessable Content";
-            case 429 -> "Too Many Requests";
-            case 431 -> "Request Header Fields Too Large";
-            case 500 -> "Internal Server Error";
-            case 501 -> "Not Implemented";
-            case 502 -> "Bad Gateway";
-            case 503 -> "Service Unavailable";
-            case 504 -> "Gateway Timeout";
-            case 505 -> "HTTP Version Not Supported";
-            default -> "";
-        };
+        return Response.text(status, ResponseWriter.reasonPhrase(status));
     }
 
     /**

@@ -231,6 +231,10 @@ final class RequestParser {
     private static int parseContentLength(String value) {
         int length;
 
+        if (value.isEmpty()) {
+            throw new HttpException(400, "invalid content-length");
+        }
+
         for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);
             if (!isDigit(c)) {
@@ -241,7 +245,7 @@ final class RequestParser {
         try {
             length = Integer.parseInt(value);
         } catch (NumberFormatException e) {
-            throw new HttpException(400, "invalid content-length", e);
+            throw new HttpException(413, "body exceeds " + MAX_BODY_BYTES + " bytes", e);
         }
 
         return length;

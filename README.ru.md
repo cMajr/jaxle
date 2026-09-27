@@ -64,10 +64,10 @@ $ curl localhost:8081/users/abc      # 400
 bad path parameter id
 ```
 
-Пример с регистрацией пользователей лежит в [`example/`](example).
+Пример с регистрацией пользователей лежит в [`examples/example/`](examples/example).
 
 ```
-javac -d out jaxle/*.java example/*.java && java -cp out example.Main
+javac -d out src/jaxle/*.java examples/example/*.java && java -cp out example.Main
 ```
 
 ## Возможности
@@ -88,7 +88,7 @@ Jaxle требует Java 21 или новее. До первого релиза
 этого репозитория и компилируйте свой код с ним.
 
 ```
-javac -d out jaxle/*.java && jar cf jaxle.jar -C out .
+javac -d out src/jaxle/*.java && jar cf jaxle.jar -C out .
 javac -cp jaxle.jar -d app Main.java Users.java
 java -cp jaxle.jar:app Main
 ```

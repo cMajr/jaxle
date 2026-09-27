@@ -64,10 +64,10 @@ $ curl localhost:8081/users/abc      # 400
 bad path parameter id
 ```
 
-An example with user registration is in [`example/`](example).
+An example with user registration is in [`examples/example/`](examples/example).
 
 ```
-javac -d out jaxle/*.java example/*.java && java -cp out example.Main
+javac -d out src/jaxle/*.java examples/example/*.java && java -cp out example.Main
 ```
 
 ## Features
@@ -88,7 +88,7 @@ Jaxle requires Java 21 or later. Until the first release, build a jar
 in a clone of this repository, then compile your code against it.
 
 ```
-javac -d out jaxle/*.java && jar cf jaxle.jar -C out .
+javac -d out src/jaxle/*.java && jar cf jaxle.jar -C out .
 javac -cp jaxle.jar -d app Main.java Users.java
 java -cp jaxle.jar:app Main
 ```

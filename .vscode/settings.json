@@ -1,0 +1,4 @@
+{
+    "java.project.sourcePaths": ["src", "test", "examples"],
+    "java.project.outputPath": "out"
+}

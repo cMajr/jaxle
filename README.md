@@ -2,12 +2,13 @@
 
 **A compact, dependency-free Java web framework with its own HTTP server.**
 
-A handler is a function that takes a `Request` and returns a `Response`,
-building the whole response at once rather than assembling it step by
-step on a mutable object as handlers in Javalin and Spark do. The
-compiler ensures that every branch produces a response, and since the
-handler is an ordinary function, you can test it without a server by
-passing in a `Request` and inspecting the `Response` it returns.
+In Jaxle, a handler is a function that takes a `Request` and returns a
+`Response`. Frameworks such as Javalin instead put headers, status, and
+body into a mutable context, where a second call to set the result
+overwrites the first. The compiler won't let a handler return anything
+other than a `Response` object, checking all of its branches. To test a
+handler, it's enough to call it with a `Request` and check the `Response`
+it returns, without starting a server.
 
 ## Quick start
 
@@ -38,7 +39,6 @@ public class Users {
     private final Map<Integer, String> users = Map.of(1, "alice", 2, "bob");
 
     Response findById(Request request) {
-        // A non-numeric id gets 400
         int id = request.param("id", Integer::parseInt);
         String name = users.get(id);
 
@@ -62,7 +62,7 @@ $ curl localhost:8081/users/abc      # 400
 bad path parameter id
 ```
 
-A fuller version with registration is in [`example/`](example).
+An example with user registration is in [`example/`](example).
 
 ```
 javac -d out jaxle/*.java example/*.java && java -cp out example.Main
@@ -71,14 +71,14 @@ javac -d out jaxle/*.java example/*.java && java -cp out example.Main
 ## Features
 
 - Routes for GET, POST, PUT, PATCH and DELETE, or any `Method` via `addRoute`
-- Static paths before patterns, patterns in the order you add them
-- Typed path parameters, `request.param("id", UUID::fromString)`
-- Percent-decoded query parameters, `request.query("page")`
+- Typed path parameters `request.param("id", UUID::fromString)`
+- Percent-decoded paths and query parameters, `request.query("page")`
 - Request body as bytes or UTF-8 text, `body()` and `text()`
-- Factories for common responses, `ok`, `created`, `notFound` and more
+- Factories for common responses, `ok`, `created`, `notFound`, `json` and more
 - `HttpException` to end a request with any status from anywhere
 - HEAD, OPTIONS and 405 answered automatically
-- `new Server(0)` for a free port in tests
+- `new Server(0)` for a free port, read back with `port()`
+- `close()` to stop the server and return from `start()`
 
 ## Usage
 
@@ -96,17 +96,19 @@ java -cp jaxle.jar:app Main
 Jaxle speaks HTTP/1.1 and is meant to run behind a reverse proxy such as
 nginx, which terminates TLS and HTTP/2.
 
-- Request bodies need `content-length`. Chunked requests are not supported.
-- Limits are fixed at 20 s per read, 8 KiB per line, 100 headers and
-  500 KiB per body.
+- Chunked requests are not supported.
+- A request must fit into 30 seconds, a line into 8 KiB, the headers
+  into 100 fields and 32 KiB, the body into 500 KiB. No more than 500
+  connections are open at once.
 - Handlers run concurrently in virtual threads and must be thread-safe.
 
 ## Not yet
 
-- Keep-alive. Each connection serves one request.
+- Keep-alive.
 - Configurable limits.
+- Write timeout.
 - Middleware.
-- JSON mapping. `Response.json` takes a string you build yourself.
+- JSON mapping.
 
 ## License
 

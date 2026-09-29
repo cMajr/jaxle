@@ -15,6 +15,8 @@ public class TestRunner {
 
     public static void main(String[] args) {
         RequestParserTest.run();
+        PercentEncodingTest.run();
+        QueryParserTest.run();
         report();
     }
 

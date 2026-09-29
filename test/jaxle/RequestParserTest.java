@@ -54,6 +54,8 @@ final class RequestParserTest {
                 () -> assertStatus(400, () -> splitRequestLine("")));
         test("splitRequestLine rejects an empty method",
                 () -> assertStatus(400, () -> splitRequestLine(" / HTTP/1.1")));
+        test("splitRequestLine rejects an empty target",
+                () -> assertStatus(400, () -> splitRequestLine("GET  HTTP/1.1")));
         test("splitRequestLine rejects an empty version",
                 () -> assertStatus(400, () -> splitRequestLine("GET / ")));
         test("splitRequestLine rejects tabs between parts",
@@ -142,7 +144,7 @@ final class RequestParserTest {
                 () -> assertStatus(400, () -> readLine(input("abc\r\r\n"), 414)));
         test("readLine accepts a line of 8192 bytes",
                 () -> assertEquals(8192, readLine(input("a".repeat(8192) + "\r\n"), 414).length()));
-        test("readLine rejects a line of 8193 bytes with the given status",
+        test("readLine rejects a line of 8193 bytes",
                 () -> assertStatus(414, () -> readLine(input("a".repeat(8193) + "\r\n"), 414)));
         test("readLine uses the given status for a long line",
                 () -> assertStatus(431, () -> readLine(input("a".repeat(8193) + "\r\n"), 431)));

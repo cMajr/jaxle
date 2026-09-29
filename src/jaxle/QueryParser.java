@@ -36,8 +36,8 @@ final class QueryParser {
             }
 
             String[] pairParts = pair.split("=", 2);
-            String name = PercentEncoding.decode(pairParts[0]);
-            String value = pairParts.length >= 2 ? PercentEncoding.decode(pairParts[1]) : "";
+            String name = PercentEncoding.decodeQueryComponent(pairParts[0]);
+            String value = pairParts.length >= 2 ? PercentEncoding.decodeQueryComponent(pairParts[1]) : "";
 
             // A repeated name keeps its first value.
             queryParams.putIfAbsent(name, value);

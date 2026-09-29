@@ -90,7 +90,7 @@ class Router {
         // "//" is not merged into "/".
         String[] parts = path.split("/", -1);
         for (int i = 0; i < parts.length; i++) {
-            parts[i] = PercentEncoding.decode(parts[i].replace("+", "%2B"));
+            parts[i] = PercentEncoding.decodePathSegment(parts[i]);
         }
 
         return String.join("/", parts);

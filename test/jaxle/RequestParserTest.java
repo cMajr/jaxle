@@ -98,9 +98,9 @@ final class RequestParserTest {
                 () -> assertEquals("/?x=1", toOriginForm("http://example.org?x=1")));
         test("toOriginForm strips user info",
                 () -> assertEquals("/a", toOriginForm("http://user@example.org/a")));
-        test("toOriginForm rejects a scheme without an authority",
+        test("toOriginForm rejects a scheme with nothing after it",
                 () -> assertStatus(400, () -> toOriginForm("http://")));
-        test("toOriginForm rejects an empty host",
+        test("toOriginForm rejects an empty authority before a path",
                 () -> assertStatus(400, () -> toOriginForm("http:///a")));
         test("toOriginForm rejects an unknown scheme",
                 () -> assertStatus(400, () -> toOriginForm("ftp://example.org/a")));
@@ -218,9 +218,9 @@ final class RequestParserTest {
                 () -> assertEquals(100, readHeaders(input(headers(100) + "\r\n")).size()));
         test("readHeaders rejects 101 headers",
                 () -> assertStatus(431, () -> readHeaders(input(headers(101) + "\r\n"))));
-        test("readHeaders accepts 32768 bytes of headers",
+        test("readHeaders accepts header lines totaling 32768 bytes",
                 () -> assertEquals(4, readHeaders(input(longHeaders(4) + "\r\n")).size()));
-        test("readHeaders rejects more than 32768 bytes of headers",
+        test("readHeaders rejects header lines totaling more than 32768 bytes",
                 () -> assertStatus(431, () -> readHeaders(input(longHeaders(4) + "b:c\r\n\r\n"))));
         test("readHeaders rejects a header line of 8193 bytes",
                 () -> assertStatus(431, () -> readHeaders(

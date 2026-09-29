@@ -51,7 +51,7 @@ final class QueryParserTest {
                 () -> assertEquals(Map.of("page", "2", "size", "10"), parseQuery("page=2&size=10")));
         test("parseQuery gives an empty value for a name without an equals sign",
                 () -> assertEquals(Map.of("debug", ""), parseQuery("debug")));
-        test("parseQuery gives an empty value for a name with an equals sign",
+        test("parseQuery gives an empty value for a name followed by an equals sign",
                 () -> assertEquals(Map.of("debug", ""), parseQuery("debug=")));
         test("parseQuery splits a pair at the first equals sign",
                 () -> assertEquals(Map.of("expr", "a=b"), parseQuery("expr=a=b")));

@@ -165,7 +165,7 @@ final class RequestParser {
             }
 
             String name = headerParts[0].toLowerCase(Locale.ROOT);
-            String value = headerParts[1].strip();
+            String value = stripOws(headerParts[1]);
 
             if (name.isEmpty() || HttpTokens.indexOfInvalid(name) != -1) {
                 throw new HttpException(400, "invalid header name");
@@ -249,6 +249,21 @@ final class RequestParser {
         }
 
         return length;
+    }
+
+    private static String stripOws(String value) {
+        int start = 0;
+        int end = value.length();
+
+        while (start < value.length() && (value.charAt(start) == ' ' || value.charAt(start) == '\t')) {
+            start++;
+        }
+
+        while (end > start && (value.charAt(end - 1) == ' ' || value.charAt(end - 1) == '\t')) {
+            end--;
+        }
+
+        return value.substring(start, end);
     }
 
     private static boolean hasControlCharacter(String value) {

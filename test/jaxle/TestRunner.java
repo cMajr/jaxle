@@ -3,10 +3,7 @@ package jaxle;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 import java.util.Objects;
-
-import static jaxle.RequestParser.readHeaders;
 
 public class TestRunner {
     private static int passed = 0;
@@ -17,9 +14,7 @@ public class TestRunner {
     }
 
     public static void main(String[] args) {
-        test("readHeaders lowercases names and strips values",
-                () -> assertEquals(Map.of("host", "x", "content-length", "5"),
-                        readHeaders(input("Host: x\r\nContent-Length:  5 \r\n\r\n"))));
+        RequestParserTest.run();
         report();
     }
 
@@ -39,7 +34,17 @@ public class TestRunner {
         }
     }
 
-    private static InputStream input(String raw) {
+    static void assertStatus(int expected, TestFn fn) throws Exception {
+        try {
+            fn.run();
+        } catch (HttpException e) {
+            assertEquals(expected, e.status());
+            return;
+        }
+        throw new AssertionError("expected HttpException with status " + expected + " but nothing was thrown");
+    }
+
+    static InputStream input(String raw) {
         return new ByteArrayInputStream(raw.getBytes(StandardCharsets.ISO_8859_1));
     }
 

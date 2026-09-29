@@ -5,9 +5,13 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
-public class TestRunner {
+final class TestRunner {
     private static int passed = 0;
     private static int failed = 0;
+
+    private TestRunner() {
+
+    }
 
     interface TestFn {
         void run() throws Exception;
@@ -26,7 +30,12 @@ public class TestRunner {
             passed++;
         } catch (Throwable e) {
             failed++;
-            System.err.println("FAIL " + name + ": " + e.getMessage());
+            if (e instanceof AssertionError) {
+                System.err.println("FAIL " + name + ": " + e.getMessage());
+            } else {
+                System.err.println("FAIL " + name);
+                e.printStackTrace();
+            }
         }
     }
 
@@ -40,7 +49,9 @@ public class TestRunner {
         try {
             fn.run();
         } catch (HttpException e) {
-            assertEquals(expected, e.status());
+            if (e.status() != expected) {
+                throw new AssertionError("expected status " + expected + " but was " + e.status());
+            }
             return;
         }
         throw new AssertionError("expected HttpException with status " + expected + " but nothing was thrown");

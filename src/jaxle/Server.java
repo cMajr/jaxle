@@ -25,15 +25,6 @@ public class Server implements AutoCloseable {
 
     private static final String VERSION = "0.1.0";
 
-    private static final String BANNER = """
-               _             _
-              (_) __ ___  __| | ___
-              | |/ _` \\ \\/ / |/ _ \\
-              | | (_| |>  <| |  __/
-             _/ |\\__,_/_/\\_\\_|\\___|
-            |__/
-            """;
-
     private final ServerSocket socket;
     private final Semaphore connections = new Semaphore(MAX_CONNECTIONS);
     private final Object lock = new Object();
@@ -163,8 +154,8 @@ public class Server implements AutoCloseable {
 
     private void printBanner() {
         long elapsed = Duration.ofNanos(System.nanoTime() - createdAt).toMillis();
-        System.out.print(BANNER);
-        System.out.printf("jaxle %s started on port %d in %d ms%n", VERSION, port(), elapsed);
+        String javaVersion = System.getProperty("java.version");
+        System.out.print(Banner.render(VERSION, javaVersion, router.routes(), port(), elapsed));
     }
 
     private void reject(Socket client) {

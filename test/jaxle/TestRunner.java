@@ -28,6 +28,7 @@ final class TestRunner {
         HttpExceptionTest.run();
         RequestTest.run();
         ServerTest.run();
+        BannerTest.run();
         report();
     }
 

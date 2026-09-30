@@ -4,6 +4,7 @@ import static jaxle.TestRunner.assertEquals;
 import static jaxle.TestRunner.assertStatus;
 import static jaxle.TestRunner.test;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -21,6 +22,7 @@ final class RouterTest {
         precedenceTests();
         decodingTests();
         allowedMethodsTests();
+        routeListTests();
     }
 
     private static Router router(Method method, String path, Handler handler) {
@@ -206,5 +208,31 @@ final class RouterTest {
         test("allowedMethods lists methods in declaration order",
                 () -> assertEquals("GET, HEAD, DELETE, OPTIONS, PATCH",
                         allowed(Method.PATCH, Method.DELETE, Method.GET)));
+    }
+
+    private static void routeListTests() {
+        test("routes is empty without registered routes",
+                () -> assertEquals(List.of(), new Router().routes()));
+        test("routes sorts by path, then by method",
+                () -> {
+                    var router = new Router();
+                    router.add(Method.DELETE, "/users/{id}", FIRST);
+                    router.add(Method.POST, "/users", FIRST);
+                    router.add(Method.GET, "/users/{id}", FIRST);
+                    router.add(Method.GET, "/", FIRST);
+                    assertEquals(List.of(
+                            new Router.Route(Method.GET, "/"),
+                            new Router.Route(Method.POST, "/users"),
+                            new Router.Route(Method.GET, "/users/{id}"),
+                            new Router.Route(Method.DELETE, "/users/{id}")),
+                            router.routes());
+                });
+        test("routes lists a path with a trailing slash once without it",
+                () -> {
+                    var router = new Router();
+                    router.add(Method.GET, "/users/", FIRST);
+                    router.add(Method.GET, "/users", SECOND);
+                    assertEquals(List.of(new Router.Route(Method.GET, "/users")), router.routes());
+                });
     }
 }

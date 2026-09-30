@@ -1,13 +1,16 @@
 package jaxle;
 
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 class Router {
     // Path is resolved first to distinguish 404 from 405.
@@ -15,6 +18,7 @@ class Router {
     private final Map<String, Map<Method, Handler>> staticRoutes = new HashMap<>();
     private final Map<String, Map<Method, Handler>> patternRoutes = new LinkedHashMap<>();
     record Match(Map<Method, Handler> handlers, Map<String, String> params) {}
+    record Route(Method method, String path) {}
 
     void add(Method method, String path, Handler handler) {
         String normalizedPath = normalizePath(path);
@@ -34,6 +38,15 @@ class Router {
 
         // Updates the map inside routes directly.
         inner.put(method, handler);
+    }
+
+    List<Route> routes() {
+        return Stream.of(staticRoutes, patternRoutes)
+            .flatMap(routes -> routes.entrySet().stream())
+            .flatMap(entry -> entry.getValue().keySet().stream()
+                .map(method -> new Route(method, entry.getKey())))
+            .sorted(Comparator.comparing(Route::path).thenComparing(Route::method))
+            .toList();
     }
 
     Match findRoute(String path) {

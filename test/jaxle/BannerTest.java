@@ -13,6 +13,7 @@ final class BannerTest {
     static void run() {
         infoTests();
         routeTableTests();
+        lineTests();
     }
 
     private static List<String> lines(List<Router.Route> routes) {
@@ -51,5 +52,11 @@ final class BannerTest {
                             new Router.Route(Method.GET, "/a")));
                     assertEquals(true, lines.indexOf("  POST  /b") < lines.indexOf("  GET   /a"));
                 });
+    }
+
+    private static void lineTests() {
+        test("line fits the version, the address and the startup time into one line",
+                () -> assertEquals("jaxle v0.1.0 on http://localhost:8081 (started in 12 ms)\n",
+                        Banner.line("0.1.0", 8081, 12)));
     }
 }

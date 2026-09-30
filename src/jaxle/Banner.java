@@ -35,6 +35,10 @@ final class Banner {
             .toString();
     }
 
+    static String line(String version, int port, long elapsedMs) {
+        return "jaxle v%s on http://localhost:%d (started in %d ms)\n".formatted(version, port, elapsedMs);
+    }
+
     private static String routeTable(List<Router.Route> routes) {
         int width = routes.stream()
             .mapToInt(route -> route.method().name().length())

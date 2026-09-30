@@ -30,6 +30,7 @@ public class Server implements AutoCloseable {
     private final Object lock = new Object();
     private boolean started = false;
     private boolean closed = false;
+    private boolean showBanner = true;
 
     private final Router router = new Router();
     private final long createdAt = System.nanoTime();
@@ -89,15 +90,17 @@ public class Server implements AutoCloseable {
      * @throws IllegalStateException if the server has already been started
      */
     public void start() {
+        boolean fullBanner;
         synchronized (lock) {
             if (started) {
                 throw new IllegalStateException("server already started");
             }
 
             started = true;
+            fullBanner = showBanner;
         }
 
-        printBanner();
+        printBanner(fullBanner);
 
         while (true) {
             Socket client;
@@ -152,10 +155,14 @@ public class Server implements AutoCloseable {
         }
     }
 
-    private void printBanner() {
+    private void printBanner(boolean fullBanner) {
         long elapsed = Duration.ofNanos(System.nanoTime() - createdAt).toMillis();
-        String javaVersion = System.getProperty("java.version");
-        System.out.print(Banner.render(VERSION, javaVersion, router.routes(), port(), elapsed));
+        if (fullBanner) {
+            String javaVersion = System.getProperty("java.version");
+            System.out.print(Banner.render(VERSION, javaVersion, router.routes(), port(), elapsed));
+        } else {
+            System.out.print(Banner.line(VERSION, port(), elapsed));
+        }
     }
 
     private void reject(Socket client) {
@@ -305,6 +312,16 @@ public class Server implements AutoCloseable {
 
     private static Response errorResponse(int status) {
         return Response.text(status, ResponseWriter.reasonPhrase(status));
+    }
+
+    public void showBanner(boolean show) {
+        synchronized (lock) {
+            if (started) {
+                throw new IllegalStateException("cannot change the banner after start()");
+            }
+
+            showBanner = show;
+        }
     }
 
     /**

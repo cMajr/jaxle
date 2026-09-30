@@ -23,6 +23,8 @@ public class Server implements AutoCloseable {
     private static final int MAX_CONNECTIONS = 500;
     private static final int ACCEPT_RETRY_DELAY_MS = 600;
 
+    private static final String VERSION = "0.1.0";
+
     private static final String BANNER = """
                _             _
               (_) __ ___  __| | ___
@@ -162,7 +164,7 @@ public class Server implements AutoCloseable {
     private void printBanner() {
         long elapsed = Duration.ofNanos(System.nanoTime() - createdAt).toMillis();
         System.out.print(BANNER);
-        System.out.printf("Started on port %d in %d ms%n", port(), elapsed);
+        System.out.printf("jaxle %s started on port %d in %d ms%n", VERSION, port(), elapsed);
     }
 
     private void reject(Socket client) {

@@ -24,6 +24,7 @@ final class TestRunner {
         RouterTest.run();
         ResponseTest.run();
         ResponseWriterTest.run();
+        HttpTokensTest.run();
         report();
     }
 

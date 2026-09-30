@@ -36,14 +36,14 @@ public class Server implements AutoCloseable {
     private final long createdAt = System.nanoTime();
 
     /**
-     * Creates a server bound to port 8080.
+     * Creates a server bound to port 5295.
      *
-     * <p>Same as {@link #Server(int) Server(8080)}.
+     * <p>Same as {@link #Server(int) Server(5295)}.
      *
      * @throws UncheckedIOException if the port cannot be bound
      */
     public Server() {
-        this(8080);
+        this(5295);
     }
 
     /**

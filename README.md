@@ -19,7 +19,7 @@ import jaxle.Server;
 
 public class Main {
     public static void main(String[] args) {
-        // Pass any port here, or call new Server() to listen on 8080
+        // Pass any port here, or call new Server() to listen on 5295
         Server server = new Server(8081);
         Users users = new Users();
         server.get("/users/{id}", users::findById);

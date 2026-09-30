@@ -19,7 +19,7 @@ import jaxle.Server;
 
 public class Main {
     public static void main(String[] args) {
-        // Укажите любой порт или вызовите new Server(), чтобы слушать 8080
+        // Укажите любой порт или вызовите new Server(), чтобы слушать 5295
         Server server = new Server(8081);
         Users users = new Users();
         server.get("/users/{id}", users::findById);

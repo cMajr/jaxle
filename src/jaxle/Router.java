@@ -55,8 +55,8 @@ class Router {
     }
 
     private static Map<String, String> matchPath(String pattern, String path) {
-        String[] patternParts = pattern.split("/");
-        String[] pathParts = path.split("/");
+        String[] patternParts = pattern.split("/", -1);
+        String[] pathParts = path.split("/", -1);
 
         if (patternParts.length != pathParts.length) {
             return null;
@@ -69,6 +69,10 @@ class Router {
             String pathPart = pathParts[i];
 
             if (patternPart.startsWith("{") && patternPart.endsWith("}")) {
+                if (pathPart.isEmpty()) {
+                    return null;
+                }
+
                 String name = patternPart.substring(1, patternPart.length() - 1);
                 params.put(name, pathPart);
             } else if (!patternPart.equals(pathPart)) {

@@ -52,6 +52,10 @@ final class RouterTest {
                 () -> assertEquals(FIRST, getHandler(router(Method.GET, "/", FIRST), "/")));
         test("findRoute gives null for an unknown path",
                 () -> assertEquals(null, router(Method.GET, "/users", FIRST).findRoute("/posts")));
+        test("findRoute finds a static route with an empty segment",
+                () -> assertEquals(FIRST, getHandler(router(Method.GET, "/users//posts", FIRST), "/users//posts")));
+        test("findRoute gives null for a second trailing slash",
+                () -> assertEquals(null, router(Method.GET, "/users", FIRST).findRoute("/users//")));
         test("findRoute gives null for a longer path",
                 () -> assertEquals(null, router(Method.GET, "/users", FIRST).findRoute("/users/1")));
         test("findRoute compares paths case-sensitively",
@@ -106,6 +110,17 @@ final class RouterTest {
                 () -> assertEquals(null, router(Method.GET, "/users/{id}", FIRST).findRoute("/users/1/posts")));
         test("findRoute gives null when a literal segment differs",
                 () -> assertEquals(null, router(Method.GET, "/users/{id}/posts", FIRST).findRoute("/users/1/likes")));
+        test("findRoute gives null for a second trailing slash after a parameter",
+                () -> assertEquals(null, router(Method.GET, "/users/{id}", FIRST).findRoute("/users/1//")));
+        test("findRoute gives null for an empty parameter",
+                () -> assertEquals(null, router(Method.GET, "/users/{id}/posts", FIRST).findRoute("/users//posts")));
+        test("findRoute gives null for an empty last parameter",
+                () -> assertEquals(null, router(Method.GET, "/users/{id}/{tab}", FIRST).findRoute("/users/1//")));
+        test("findRoute gives null for an empty parameter at the root",
+                () -> assertEquals(null, router(Method.GET, "/{name}", FIRST).findRoute("/")));
+        test("findRoute matches an empty literal segment in a pattern",
+                () -> assertEquals(Map.of("id", "1"),
+                        router(Method.GET, "/users/{id}//posts", FIRST).findRoute("/users/1//posts").params()));
         test("findRoute treats a partly braced segment as a literal",
                 () -> {
                     var router = router(Method.GET, "/files/{name}.txt", FIRST);

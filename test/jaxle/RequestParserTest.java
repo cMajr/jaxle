@@ -114,6 +114,8 @@ final class RequestParserTest {
                 () -> assertStatus(400, () -> toOriginForm("http://")));
         test("toOriginForm rejects an empty authority before a path",
                 () -> assertStatus(400, () -> toOriginForm("http:///a")));
+        test("toOriginForm rejects an asterisk followed by other characters",
+                () -> assertStatus(400, () -> toOriginForm("*x")));
         test("toOriginForm rejects an unknown scheme",
                 () -> assertStatus(400, () -> toOriginForm("ftp://example.org/a")));
         test("toOriginForm rejects a relative path",
@@ -213,7 +215,7 @@ final class RequestParserTest {
         test("readHeaders rejects a tab inside a name",
                 () -> assertStatus(400, () -> readHeaders(input("X\tA: b\r\n\r\n"))));
         test("readHeaders rejects an obsolete line folding",
-                () -> assertStatus(400, () -> readHeaders(input("X-A: b\r\n c\r\n\r\n"))));
+                () -> assertStatus(400, () -> readHeaders(input("X-A: b\r\n c: d\r\n\r\n"))));
         test("readHeaders rejects a control character inside a value",
                 () -> assertStatus(400, () -> readHeaders(input("X-A: b\u0001c\r\n\r\n"))));
         test("readHeaders rejects DEL inside a value",

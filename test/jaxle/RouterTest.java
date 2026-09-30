@@ -175,6 +175,9 @@ final class RouterTest {
         test("findRoute decodes an escaped brace as a literal character",
                 () -> assertEquals(Map.of("id", "{x}"),
                         router(Method.GET, "/users/{id}", FIRST).findRoute("/users/%7Bx%7D").params()));
+        test("findRoute decodes an escaped percent sign before 2F once",
+                () -> assertEquals(Map.of("name", "a%2Fb"),
+                        router(Method.GET, "/{name}", FIRST).findRoute("/a%252Fb").params()));
         test("findRoute rejects an encoded slash",
                 () -> assertStatus(400, () -> router(Method.GET, "/{name}", FIRST).findRoute("/a%2Fb")));
         test("findRoute rejects a lowercase encoded slash",

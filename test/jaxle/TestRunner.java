@@ -27,6 +27,7 @@ final class TestRunner {
         HttpTokensTest.run();
         HttpExceptionTest.run();
         RequestTest.run();
+        ServerTest.run();
         report();
     }
 

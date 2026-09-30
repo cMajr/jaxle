@@ -2,6 +2,8 @@ package jaxle;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -158,71 +160,73 @@ public class Server implements AutoCloseable {
         }
     }
 
+    void handleRequest(InputStream in, OutputStream out) throws IOException {
+        boolean headRequest = false;
+        Response response;
+
+        try {
+            String requestLine = RequestParser.readLine(in, 414);
+            // Client closed the connection without sending any data.
+            if (requestLine == null) {
+                return;
+            }
+
+            // Validate the request line before processing headers.
+            // For example "GET /api/orders/1043/items?limit=20&offset=40 HTTP/1.1"
+            // gives method, target and version.
+            String[] parts = RequestParser.splitRequestLine(requestLine);
+            Method method = RequestParser.parseMethod(parts[0]);
+            RequestParser.Version version = RequestParser.parseVersion(parts[2]);
+            String target = RequestParser.toOriginForm(parts[1]);
+
+            // If a HEAD request arrives and the handler or the parsing methods throw
+            // an exception, the server must respond with an error without a body.
+            // But if this line is placed after the request parsing, handleRequest
+            // will jump straight to catch, skipping the lines below, and the HEAD
+            // request error will be sent with a body.
+            headRequest = method == Method.HEAD;
+            Map<String, String> headers = RequestParser.readHeaders(in);
+            RequestParser.rejectTransferEncoding(headers);
+            byte[] body = RequestParser.readBody(in, headers);
+
+            if (version.major() != 1) {
+                response = Response.text(505, "only HTTP/1.x is supported");
+            } else if (version.minor() >= 1 && !headers.containsKey("host")) {
+                throw new HttpException(400, "missing host header");
+            } else if (method == null) {
+                response = errorResponse(501);
+            } else {
+                response = dispatch(method, target, headers, body);
+            }
+        } catch (HttpException e) {
+            String message;
+            if (e.status() >= 500) {
+                log.log(ERROR, "Request failed", e);
+                message = ResponseWriter.reasonPhrase(e.status());
+            } else {
+                log.log(DEBUG, e.getMessage());
+                message = e.getMessage();
+            }
+
+            response = Response.text(e.status(), message);
+        } catch (SocketTimeoutException e) {
+            log.log(DEBUG, "Request timeout");
+            response = errorResponse(408);
+        } catch (Throwable e) {
+            log.log(ERROR, "Request failed", e);
+            response = errorResponse(500);
+        }
+
+        ResponseWriter.write(out, response, headRequest);
+    }
+
     private void handleConnection(Socket client) {
         try {
-            boolean headRequest = false;
-            Response response;
-            try {
-                var in = new BufferedInputStream(new DeadlineInputStream(client, REQUEST_TIMEOUT_MS));
-                String requestLine = RequestParser.readLine(in, 414);
-
-                // Client closed the connection without sending any data.
-                if (requestLine == null) {
-                    return;
-                }
-
-                // Validate the request line before processing headers.
-                // For example "GET /api/orders/1043/items?limit=20&offset=40 HTTP/1.1"
-                // gives method, target and version.
-                String[] parts = RequestParser.splitRequestLine(requestLine);
-                Method method = RequestParser.parseMethod(parts[0]);
-                RequestParser.Version version = RequestParser.parseVersion(parts[2]);
-                String target = RequestParser.toOriginForm(parts[1]);
-
-                // If a HEAD request arrives and the handler or the parsing methods throw
-                // an exception, the server must respond with an error without a body.
-                // But if this line is placed after the request parsing, handleConnection
-                // will jump straight to catch, skipping the lines below, and the HEAD
-                // request error will be sent with a body.
-                headRequest = method == Method.HEAD;
-                Map<String, String> headers = RequestParser.readHeaders(in);
-                RequestParser.rejectTransferEncoding(headers);
-                byte[] body = RequestParser.readBody(in, headers);
-
-                if (version.major() != 1) {
-                    response = Response.text(505, "only HTTP/1.x is supported");
-                } else if (version.minor() >= 1 && !headers.containsKey("host")) {
-                    throw new HttpException(400, "missing host header");
-                } else if (method == null) {
-                    response = errorResponse(501);
-                } else {
-                    response = dispatch(method, target, headers, body);
-                }
-            } catch (HttpException e) {
-                String message;
-                if (e.status() >= 500) {
-                    log.log(ERROR, "Request failed", e);
-                    message = ResponseWriter.reasonPhrase(e.status());
-                } else {
-                    log.log(DEBUG, e.getMessage());
-                    message = e.getMessage();
-                }
-
-                response = Response.text(e.status(), message);
-            } catch (SocketTimeoutException e) {
-                log.log(DEBUG, "Request timeout");
-                response = errorResponse(408);
-            } catch (Throwable e) {
-                log.log(ERROR, "Request failed", e);
-                response = errorResponse(500);
-            }
-
-            try {
-                var out = client.getOutputStream();
-                ResponseWriter.write(out, response, headRequest);
-            } catch (IOException e) {
-                // Client went away before the response was written.
-            }
+            var in = new BufferedInputStream(new DeadlineInputStream(client, REQUEST_TIMEOUT_MS));
+            var out = client.getOutputStream();
+            handleRequest(in, out);
+        } catch (IOException e) {
+            // client went away before the response was written
         } finally {
             try {
                 client.close();

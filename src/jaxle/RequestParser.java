@@ -89,6 +89,11 @@ final class RequestParser {
             }
         }
 
+        String authority = target.substring(authorityStart, end);
+        if (authority.contains("@") || authority.startsWith(":")) {
+            throw new HttpException(400, "invalid authority");
+        }
+
         // RFC 9110 4.2.1 requires rejecting an http URI with an empty host.
         if (end == authorityStart) {
             throw new HttpException(400, "invalid request target");

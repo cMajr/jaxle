@@ -96,8 +96,20 @@ final class RequestParserTest {
                 () -> assertEquals("/", toOriginForm("http://example.org")));
         test("toOriginForm puts a slash before a query without a path",
                 () -> assertEquals("/?x=1", toOriginForm("http://example.org?x=1")));
-        test("toOriginForm strips user info",
-                () -> assertEquals("/a", toOriginForm("http://user@example.org/a")));
+        test("toOriginForm rejects user info",
+                () -> assertStatus(400, () -> toOriginForm("http://user@example.org/a")));
+        test("toOriginForm rejects an empty user info",
+                () -> assertStatus(400, () -> toOriginForm("http://@/a")));
+        test("toOriginForm rejects a port without a host",
+                () -> assertStatus(400, () -> toOriginForm("http://:80/a")));
+        test("toOriginForm accepts a host with a port",
+                () -> assertEquals("/a", toOriginForm("http://example.org:80/a")));
+        test("toOriginForm accepts an IPv6 host with a port",
+                () -> assertEquals("/a", toOriginForm("http://[::1]:80/a")));
+        test("toOriginForm keeps an at sign in the path",
+                () -> assertEquals("/users/@alice", toOriginForm("http://example.org/users/@alice")));
+        test("toOriginForm keeps an at sign in the query",
+                () -> assertEquals("/?q=a@b", toOriginForm("http://example.org?q=a@b")));
         test("toOriginForm rejects a scheme with nothing after it",
                 () -> assertStatus(400, () -> toOriginForm("http://")));
         test("toOriginForm rejects an empty authority before a path",

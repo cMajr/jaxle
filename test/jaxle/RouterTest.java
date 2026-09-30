@@ -50,6 +50,8 @@ final class RouterTest {
                 });
         test("findRoute finds the root path",
                 () -> assertEquals(FIRST, getHandler(router(Method.GET, "/", FIRST), "/")));
+        test("findRoute finds the root path with a trailing slash",
+                () -> assertEquals(FIRST, getHandler(router(Method.GET, "/", FIRST), "//")));
         test("findRoute gives null for an unknown path",
                 () -> assertEquals(null, router(Method.GET, "/users", FIRST).findRoute("/posts")));
         test("findRoute finds a static route with an empty segment",

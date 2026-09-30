@@ -6,6 +6,7 @@ import java.io.UncheckedIOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.util.EnumSet;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
 
@@ -235,6 +236,16 @@ public class Server implements AutoCloseable {
 
     private Response dispatch(Method method, String target, Map<String, String> headers, byte[] body) {
         String path = QueryParser.stripQuery(target);
+
+        if (path.equals("*")) {
+            if (method != Method.OPTIONS) {
+                throw new HttpException(400, "asterisk-form is only allowed for OPTIONS");
+            }
+
+            String methods = Router.joinMethods(EnumSet.allOf(Method.class));
+            return Response.noContent().withHeader("allow", methods);
+        }
+
         Router.Match route = router.findRoute(path);
 
         if (route == null) {

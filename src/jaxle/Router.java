@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 class Router {
@@ -118,10 +119,13 @@ class Router {
             allowed.add(Method.HEAD);
         }
 
-        return allowed
+        return joinMethods(allowed);
+    }
+
+    static String joinMethods(Set<Method> methods) {
+        return methods
             .stream()
             .map(Method::name)
             .collect(Collectors.joining(", "));
     }
-
 }

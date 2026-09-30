@@ -89,6 +89,11 @@ final class ResponseWriterTest {
                         + "allow: GET\r\n"
                         + "connection: close\r\n"
                         + "\r\n", written(Response.noContent().withHeader("allow", "GET"), false)));
+        test("write sends content-length 0 and drops the body for 205",
+                () -> assertEquals("HTTP/1.1 205 Reset Content\r\n"
+                        + "content-length: 0\r\n"
+                        + "connection: close\r\n"
+                        + "\r\n", written(plain(205, "hello"), false)));
     }
 
     private static void headTests() {
@@ -106,11 +111,18 @@ final class ResponseWriterTest {
                 () -> assertEquals("HTTP/1.1 204 No Content\r\n"
                         + "connection: close\r\n"
                         + "\r\n", written(Response.noContent(), true)));
+        test("write sends content-length 0 for HEAD with 205",
+                () -> assertEquals("HTTP/1.1 205 Reset Content\r\n"
+                        + "content-length: 0\r\n"
+                        + "connection: close\r\n"
+                        + "\r\n", written(plain(205, "hello"), true)));
     }
 
     private static void reasonPhraseTests() {
         test("reasonPhrase gives OK for 200",
                 () -> assertEquals("OK", reasonPhrase(200)));
+        test("reasonPhrase gives Reset Content for 205",
+                () -> assertEquals("Reset Content", reasonPhrase(205)));
         test("reasonPhrase gives Not Found for 404",
                 () -> assertEquals("Not Found", reasonPhrase(404)));
         test("reasonPhrase gives the RFC 9110 name for 413",

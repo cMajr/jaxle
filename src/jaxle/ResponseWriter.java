@@ -15,7 +15,8 @@ final class ResponseWriter {
         // A 204 or 304 response "cannot contain content" (RFC 9110 15.3.5, 15.4.5).
         // Neither gets content-length either. It is forbidden on 204 (8.6), and on
         // 304 it would have to match a 200 response the server never built.
-        boolean statusAllowsBody = status != 204 && status != 304;
+        boolean writesContentLength = status != 204 && status != 304;
+        boolean writesBody = status != 204 && status != 304 && !headRequest;
 
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder
@@ -29,10 +30,13 @@ final class ResponseWriter {
             stringBuilder.append(header.getKey()).append(": ").append(header.getValue()).append("\r\n");
         }
 
-        byte[] body = response.body();
+        // RFC 9110 15.3.6 forbids content in a 205 response but still allows
+        // content-length. An empty body in place of the handler's one gives
+        // "content-length: 0" with nothing after the headers.
+        byte[] body = status == 205 ? new byte[0] : response.body();
 
         // A response to HEAD keeps the content-length a GET would get (RFC 9110 8.6).
-        if (statusAllowsBody) {
+        if (writesContentLength) {
             stringBuilder.append("content-length: ").append(body.length).append("\r\n");
         }
 
@@ -43,7 +47,7 @@ final class ResponseWriter {
 
         out.write(head.getBytes(StandardCharsets.ISO_8859_1));
 
-        if (statusAllowsBody && !headRequest) {
+        if (writesBody) {
             out.write(body);
         }
     }
@@ -53,6 +57,7 @@ final class ResponseWriter {
             case 200 -> "OK";
             case 201 -> "Created";
             case 204 -> "No Content";
+            case 205 -> "Reset Content";
             case 301 -> "Moved Permanently";
             case 302 -> "Found";
             case 304 -> "Not Modified";

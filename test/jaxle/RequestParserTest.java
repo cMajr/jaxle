@@ -50,6 +50,10 @@ final class RequestParserTest {
                 () -> assertStatus(400, () -> splitRequestLine("GET /café HTTP/1.1")));
         test("splitRequestLine rejects a control character in the target",
                 () -> assertStatus(400, () -> splitRequestLine("GET /a\u0001b HTTP/1.1")));
+        test("splitRequestLine rejects a fragment in an origin-form target",
+                () -> assertStatus(400, () -> splitRequestLine("GET /a#b HTTP/1.1")));
+        test("splitRequestLine rejects a fragment in an absolute-form target",
+                () -> assertStatus(400, () -> splitRequestLine("GET http://example.org/a#b HTTP/1.1")));
         test("splitRequestLine rejects an empty line",
                 () -> assertStatus(400, () -> splitRequestLine("")));
         test("splitRequestLine rejects an empty method",

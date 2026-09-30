@@ -28,11 +28,13 @@ final class RequestParser {
         }
 
         // The target may hold only visible ASCII because the URI
-        // grammar requires anything else to be percent-encoded
+        // grammar requires anything else to be percent-encoded. It may
+        // not hold "#" either, since no form of the request target
+        // includes a fragment (RFC 9112 3.2).
         String target = parts[1];
         for (int i = 0; i < target.length(); i++) {
             char c = target.charAt(i);
-            boolean allowed = c >= 0x21 && c <= 0x7E;
+            boolean allowed = c >= 0x21 && c <= 0x7E && c != '#';
             if (!allowed) {
                 throw new HttpException(400, "invalid character in request target");
             }

@@ -21,6 +21,7 @@ final class TestRunner {
         RequestParserTest.run();
         PercentEncodingTest.run();
         QueryParserTest.run();
+        RouterTest.run();
         report();
     }
 

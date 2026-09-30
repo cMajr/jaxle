@@ -257,11 +257,9 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
         }
     }
 
-    static int checkStatus(int status) {
+    private static void checkStatus(int status) {
         if (status < 200 || status > 599) {
             throw new IllegalArgumentException("status " + status + " out of range 200..599");
         }
-
-        return status;
     }
 }

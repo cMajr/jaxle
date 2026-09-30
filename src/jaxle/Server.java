@@ -161,7 +161,7 @@ public class Server implements AutoCloseable {
             String javaVersion = System.getProperty("java.version");
             System.out.print(Banner.render(VERSION, javaVersion, router.routes(), port(), elapsed));
         } else {
-            System.out.print(Banner.line(VERSION, port(), elapsed));
+            System.out.println(Banner.line(VERSION, port(), elapsed));
         }
     }
 

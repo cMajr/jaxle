@@ -56,7 +56,7 @@ final class BannerTest {
 
     private static void lineTests() {
         test("line fits the version, the address and the startup time into one line",
-                () -> assertEquals("jaxle v0.1.0 on http://localhost:8081 (started in 12 ms)\n",
+                () -> assertEquals("jaxle v0.1.0 on http://localhost:8081 (started in 12 ms)",
                         Banner.line("0.1.0", 8081, 12)));
     }
 }

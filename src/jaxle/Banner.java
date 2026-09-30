@@ -36,7 +36,7 @@ final class Banner {
     }
 
     static String line(String version, int port, long elapsedMs) {
-        return "jaxle v%s on http://localhost:%d (started in %d ms)\n".formatted(version, port, elapsedMs);
+        return "jaxle v%s on http://localhost:%d (started in %d ms)".formatted(version, port, elapsedMs);
     }
 
     private static String routeTable(List<Router.Route> routes) {

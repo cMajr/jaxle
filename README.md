@@ -77,7 +77,7 @@ javac -d out src/jaxle/*.java examples/example/*.java && java -cp out example.Ma
 - Percent-decoded paths and query parameters, `request.query("page")`
 - Request body as bytes or UTF-8 text, `body()` and `text()`
 - Factories for common responses, `ok`, `created`, `notFound`, `json` and more
-- `HttpException` to end a request with any status from anywhere
+- `HttpException` to end a request with an error status from anywhere
 - HEAD, OPTIONS and 405 answered automatically
 - `new Server(0)` for a free port, read back with `port()`
 - `close()` to stop the server and return from `start()`

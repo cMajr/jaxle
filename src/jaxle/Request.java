@@ -3,6 +3,7 @@ package jaxle;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -17,7 +18,17 @@ public record Request(
     Map<String, String> queryParams
 ) {
     public Request {
-        headers = Map.copyOf(headers);
+        Map<String, String> lowercased = new HashMap<>();
+
+        for (Map.Entry<String, String> header : headers.entrySet()) {
+            String n = header.getKey();
+            String v = header.getValue();
+            if (lowercased.putIfAbsent(n.toLowerCase(Locale.ROOT), v) != null) {
+                throw new IllegalArgumentException("duplicate header " + n);
+            }
+        }
+
+        headers = Map.copyOf(lowercased);
         body = body.clone();
         params = Map.copyOf(params);
         queryParams = Map.copyOf(queryParams);

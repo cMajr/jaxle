@@ -8,6 +8,7 @@ import java.io.UncheckedIOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.time.Duration;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
@@ -22,6 +23,15 @@ public class Server implements AutoCloseable {
     private static final int MAX_CONNECTIONS = 500;
     private static final int ACCEPT_RETRY_DELAY_MS = 600;
 
+    private static final String BANNER = """
+               _             _
+              (_) __ ___  __| | ___
+              | |/ _` \\ \\/ / |/ _ \\
+              | | (_| |>  <| |  __/
+             _/ |\\__,_/_/\\_\\_|\\___|
+            |__/
+            """;
+
     private final ServerSocket socket;
     private final Semaphore connections = new Semaphore(MAX_CONNECTIONS);
     private final Object lock = new Object();
@@ -29,6 +39,7 @@ public class Server implements AutoCloseable {
     private boolean closed = false;
 
     private final Router router = new Router();
+    private final long createdAt = System.nanoTime();
 
     /**
      * Creates a server bound to port 8080.
@@ -93,6 +104,8 @@ public class Server implements AutoCloseable {
             started = true;
         }
 
+        printBanner();
+
         while (true) {
             Socket client;
             try {
@@ -144,6 +157,12 @@ public class Server implements AutoCloseable {
         } catch (IOException e) {
             throw new UncheckedIOException("cannot close port " + port(), e);
         }
+    }
+
+    private void printBanner() {
+        long elapsed = Duration.ofNanos(System.nanoTime() - createdAt).toMillis();
+        System.out.print(BANNER);
+        System.out.printf("Started on port %d in %d ms%n", port(), elapsed);
     }
 
     private void reject(Socket client) {

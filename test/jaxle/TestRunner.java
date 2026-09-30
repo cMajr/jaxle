@@ -23,6 +23,7 @@ final class TestRunner {
         QueryParserTest.run();
         RouterTest.run();
         ResponseTest.run();
+        ResponseWriterTest.run();
         report();
     }
 

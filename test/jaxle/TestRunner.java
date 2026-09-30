@@ -22,6 +22,7 @@ final class TestRunner {
         PercentEncodingTest.run();
         QueryParserTest.run();
         RouterTest.run();
+        ResponseTest.run();
         report();
     }
 
@@ -56,6 +57,18 @@ final class TestRunner {
             return;
         }
         throw new AssertionError("expected HttpException with status " + expected + " but nothing was thrown");
+    }
+
+    static void assertThrows(Class<? extends Throwable> expected, TestFn fn) throws Exception {
+        try {
+            fn.run();
+        } catch (Throwable e) {
+            if (!expected.isInstance(e)) {
+                throw new AssertionError("expected " + expected.getSimpleName() + " but was " + e);
+            }
+            return;
+        }
+        throw new AssertionError("expected " + expected.getSimpleName() + " but nothing was thrown");
     }
 
     static InputStream input(String raw) {

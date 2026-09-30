@@ -17,11 +17,13 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
      *
      * <p>The constructor keeps its own copies of the body and the headers,
      * beyond the reach of changes made outside, and converts header names to
-     * lowercase. By RFC 9110 5.6.2 a name must be a non-empty token, whereas a
-     * value must fit the field-value rule (5.5), with no space or tab at the
-     * ends. Two names that differ only in case describe the same header and
-     * cannot both be given. The {@code content-length}, {@code connection}
-     * and {@code transfer-encoding} headers are left to the server and not
+     * lowercase. By RFC 9110 5.6.2 a name must be a non-empty token. A value
+     * may hold only visible US-ASCII characters, spaces and tabs, with no
+     * space or tab at the ends. The constructor rejects obs-text (0x80 to
+     * 0xFF) even though the field-value rule (5.5) allows it. Two names that
+     * differ only in case describe the same header and cannot both be given.
+     * The {@code content-length}, {@code connection} and
+     * {@code transfer-encoding} headers are left to the server and not
      * accepted here, because they control how the message travels over the
      * connection.
      *
@@ -32,6 +34,8 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
      *         if a name or a value breaks the rules above, if two names
      *         match ignoring case, or if a header left to the server is
      *         given
+     * @throws NullPointerException if the headers or the body is null, or if
+     *         a header name or value is null
      */
     public Response {
         checkStatus(status);

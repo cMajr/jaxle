@@ -120,7 +120,6 @@ nginx, which terminates TLS and HTTP/2.
 - Configurable limits.
 - Write timeout.
 - Middleware.
-- JSON mapping.
 
 ## License
 

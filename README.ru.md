@@ -65,9 +65,10 @@ bad path parameter id
 ```
 
 Пример с регистрацией пользователей лежит в [`examples/example/`](examples/example).
+Он собирается через Maven и использует Jackson для JSON.
 
 ```
-javac -d out src/jaxle/*.java examples/example/*.java && java -cp out example.Main
+./run.sh
 ```
 
 ## Возможности

@@ -65,9 +65,10 @@ bad path parameter id
 ```
 
 An example with user registration is in [`examples/example/`](examples/example).
+It is built with Maven and uses Jackson for JSON.
 
 ```
-javac -d out src/jaxle/*.java examples/example/*.java && java -cp out example.Main
+./run.sh
 ```
 
 ## Features

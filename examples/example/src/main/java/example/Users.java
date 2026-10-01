@@ -3,6 +3,7 @@ package example;
 import jaxle.Request;
 import jaxle.Response;
 
+import static jaxle.Json.json;
 import static jaxle.Response.badRequest;
 import static jaxle.Response.conflict;
 import static jaxle.Response.created;
@@ -20,19 +21,23 @@ public class Users {
     private int nextId = 0;
 
     synchronized Response register(Request request) {
-        String username = request.text().strip();
+        String username = request.json(NewUser.class).name();
 
-        if (username.isEmpty()) {
-            return badRequest("Username must not be empty");
+        if (username == null || username.isBlank()) {
+            return badRequest(json(new ApiError("Username must not be empty")));
         }
 
+        username = username.strip();
+
         if (users.containsValue(username)) {
-            return conflict("Username " + username + " is already taken");
+            return conflict(json(new ApiError("Username " + username + " is already taken")));
         }
 
         nextId++;
         users.put(nextId, username);
-        return created("/users/" + nextId, username);
+
+        User user = new User(nextId, username);
+        return created("/users/" + nextId, json(user));
     }
 
     synchronized Response findById(Request request) {
@@ -40,9 +45,10 @@ public class Users {
         String username = users.get(id);
 
         if (username == null) {
-            return notFound("User with id " + id + " not found");
+            return notFound(json(new ApiError("User with id " + id + " not found")));
         }
 
-        return ok(username);
+        User user = new User(id, username);
+        return ok(json(user));
     }
 }

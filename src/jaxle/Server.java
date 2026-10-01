@@ -23,7 +23,7 @@ public class Server implements AutoCloseable {
     private static final int MAX_CONNECTIONS = 500;
     private static final int ACCEPT_RETRY_DELAY_MS = 600;
 
-    private static final String VERSION = "0.1.0";
+    private static final String VERSION = "0.1.0-SNAPSHOT";
 
     private final ServerSocket socket;
     private final Semaphore connections = new Semaphore(MAX_CONNECTIONS);

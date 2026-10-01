@@ -198,6 +198,17 @@ final class ResponseTest {
         test("created rejects CRLF in the location",
                 () -> assertThrows(IllegalArgumentException.class,
                         () -> Response.created("/users/1\r\nset-cookie: a=b", "a")));
+        test("ok with JSON gives status 200",
+                () -> assertEquals(Response.json(200, new Json("{}")), Response.ok(new Json("{}"))));
+        test("badRequest with JSON gives status 400",
+                () -> assertEquals(Response.json(400, new Json("{}")), Response.badRequest(new Json("{}"))));
+        test("notFound with JSON gives status 404",
+                () -> assertEquals(Response.json(404, new Json("{}")), Response.notFound(new Json("{}"))));
+        test("conflict with JSON gives status 409",
+                () -> assertEquals(Response.json(409, new Json("{}")), Response.conflict(new Json("{}"))));
+        test("created with JSON gives status 201 with a location",
+                () -> assertEquals(Response.json(201, new Json("{}")).withHeader("location", "/users/1"),
+                        Response.created("/users/1", new Json("{}"))));
         test("noContent gives status 204 without headers or a body",
                 () -> assertEquals(new Response(204, Map.of(), EMPTY), Response.noContent()));
     }

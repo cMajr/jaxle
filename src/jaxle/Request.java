@@ -88,6 +88,14 @@ public record Request(
         }
     }
 
+    public <T> T json(Class<T> type) {
+        try {
+            return Json.mapper().fromJson(text(), type);
+        } catch (InvalidJsonException e) {
+            throw new HttpException(400, "invalid JSON body", e);
+        }
+    }
+
     private String textUtf8() {
         return new String(body, StandardCharsets.UTF_8);
     }

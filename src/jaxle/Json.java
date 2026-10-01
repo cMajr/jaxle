@@ -9,13 +9,17 @@ public record Json(String content) {
         Json.mapper = Objects.requireNonNull(mapper, "mapper");
     }
 
-    public static Json json(Object object) {
+    static JsonMapper mapper() {
         if (mapper == null) {
             throw new IllegalStateException(
                 "JSON mapper is not set. Call Json.setMapper before using json."
             );
         }
 
-        return new Json(mapper.toJson(object));
+        return mapper;
+    }
+
+    public static Json json(Object object) {
+        return new Json(mapper().toJson(object));
     }
 }

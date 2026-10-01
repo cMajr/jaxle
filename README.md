@@ -85,13 +85,22 @@ It is built with Maven and uses Jackson for JSON.
 
 ## Usage
 
-Jaxle requires Java 21 or later. Until the first release, build a jar
-in a clone of this repository, then compile your code against it.
+Jaxle requires Java 21 or later. It is not on Maven Central yet. Install
+it into the local Maven repository from a clone of this repository:
 
 ```
-javac -d out src/jaxle/*.java && jar cf jaxle.jar -C out .
-javac -cp jaxle.jar -d app Main.java Users.java
-java -cp jaxle.jar:app Main
+git checkout v0.1.0
+mvn install
+```
+
+Then add the dependency to your `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>io.github.cmajr</groupId>
+    <artifactId>jaxle</artifactId>
+    <version>0.1.0</version>
+</dependency>
 ```
 
 ## Scope

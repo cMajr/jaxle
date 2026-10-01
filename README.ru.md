@@ -85,13 +85,22 @@ bad path parameter id
 
 ## Использование
 
-Jaxle требует Java 21 или новее. До первого релиза соберите jar в клоне
-этого репозитория и компилируйте свой код с ним.
+Jaxle требует Java 21 или новее. В Maven Central его пока нет. Установите
+его в локальный репозиторий Maven из клона этого репозитория:
 
 ```
-javac -d out src/jaxle/*.java && jar cf jaxle.jar -C out .
-javac -cp jaxle.jar -d app Main.java Users.java
-java -cp jaxle.jar:app Main
+git checkout v0.1.0
+mvn install
+```
+
+Затем добавьте зависимость в свой `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>io.github.cmajr</groupId>
+    <artifactId>jaxle</artifactId>
+    <version>0.1.0</version>
+</dependency>
 ```
 
 ## Область применения

@@ -98,6 +98,10 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
         return text(200, content);
     }
 
+    public static Response ok(Json json) {
+        return json(200, json);
+    }
+
     /**
      * {@return a plain-text response with status 201}
      *
@@ -109,6 +113,10 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
      */
     public static Response created(String location, String content) {
         return text(201, content).withHeader("location", location);
+    }
+
+    public static Response created(String location, Json json) {
+        return json(201, json).withHeader("location", location);
     }
 
     /**
@@ -132,6 +140,10 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
         return text(400, content);
     }
 
+    public static Response badRequest(Json json) {
+        return json(400, json);
+    }
+
     /**
      * {@return a plain-text response with status 404}
      *
@@ -143,6 +155,10 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
         return text(404, content);
     }
 
+    public static Response notFound(Json json) {
+        return json(404, json);
+    }
+
     /**
      * {@return a plain-text response with status 409}
      *
@@ -152,6 +168,10 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
      */
     public static Response conflict(String content) {
         return text(409, content);
+    }
+
+    public static Response conflict(Json json) {
+        return json(409, json);
     }
 
     /**
@@ -166,12 +186,12 @@ public record Response(int status, Map<String, String> headers, byte[] body) {
      * without being parsed or validated as JSON.
      *
      * @param status the status code
-     * @param content the JSON text
+     * @param json the JSON text
      * @throws IllegalArgumentException if the status is outside 200..599
      */
-    public static Response json(int status, String content) {
+    public static Response json(int status, Json json) {
         Map<String, String> headers = Map.of("content-type", "application/json");
-        byte[] body = content.getBytes(StandardCharsets.UTF_8);
+        byte[] body = json.content().getBytes(StandardCharsets.UTF_8);
         return new Response(status, headers, body);
     }
 

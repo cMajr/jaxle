@@ -177,13 +177,13 @@ final class ResponseTest {
                 () -> assertThrows(IllegalArgumentException.class, () -> Response.text(99, "a")));
         test("json sets the status, a JSON type and a UTF-8 body",
                 () -> {
-                    var response = Response.json(200, "{\"name\":\"café\"}");
+                    var response = Response.json(200, new Json("{\"name\":\"café\"}"));
                     assertEquals(200, response.status());
                     assertEquals(Map.of("content-type", "application/json"), response.headers());
                     assertEquals("{\"name\":\"café\"}", text(response.body()));
                 });
         test("json rejects a status out of range",
-                () -> assertThrows(IllegalArgumentException.class, () -> Response.json(600, "{}")));
+                () -> assertThrows(IllegalArgumentException.class, () -> Response.json(600, new Json("{}"))));
         test("ok gives status 200",
                 () -> assertEquals(Response.text(200, "a"), Response.ok("a")));
         test("badRequest gives status 400",

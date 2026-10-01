@@ -22,6 +22,7 @@ final class RequestTest {
         textTests();
         paramTests();
         queryTests();
+        jsonTests();
         equalityTests();
     }
 
@@ -151,6 +152,52 @@ final class RequestTest {
         test("query gives null for an unknown name",
                 () -> assertEquals(null, new Request(Method.GET, "/", Map.of(), EMPTY, Map.of(), Map.of())
                         .query("page")));
+    }
+
+    private static void jsonTests() {
+        Json.setMapper(new FakeMapper());
+
+        test("json gives the body read by the mapper",
+                () -> assertEquals("{\"name\":\"café\"}",
+                        withBody("application/json", "{\"name\":\"café\"}".getBytes(StandardCharsets.UTF_8))
+                                .json(String.class)));
+        test("json reads the body in its charset",
+                () -> assertEquals("café", withBody("application/json; charset=ISO-8859-1",
+                        "café".getBytes(StandardCharsets.ISO_8859_1)).json(String.class)));
+        test("json rejects invalid JSON with status 400",
+                () -> assertStatus(400, () -> withBody("application/json", "bad".getBytes(StandardCharsets.UTF_8))
+                        .json(String.class)));
+        test("json keeps the mapper exception as the cause",
+                () -> {
+                    try {
+                        withBody("application/json", "bad".getBytes(StandardCharsets.UTF_8)).json(String.class);
+                    } catch (HttpException e) {
+                        assertEquals(InvalidJsonException.class, e.getCause().getClass());
+                        return;
+                    }
+                    throw new AssertionError("expected HttpException but nothing was thrown");
+                });
+        test("json passes other mapper exceptions through",
+                () -> assertThrows(IllegalStateException.class,
+                        () -> withBody("application/json", "boom".getBytes(StandardCharsets.UTF_8)).json(String.class)));
+    }
+
+    private static final class FakeMapper implements JsonMapper {
+        @Override
+        public String toJson(Object object) {
+            return String.valueOf(object);
+        }
+
+        @Override
+        public <T> T fromJson(String content, Class<T> type) {
+            if (content.equals("bad")) {
+                throw new InvalidJsonException("bad");
+            }
+            if (content.equals("boom")) {
+                throw new IllegalStateException("boom");
+            }
+            return type.cast(content);
+        }
     }
 
     private static void equalityTests() {
